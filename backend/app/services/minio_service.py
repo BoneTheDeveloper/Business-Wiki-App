@@ -7,24 +7,30 @@ from app.config import settings
 
 
 class MinioService:
-    """MinIO client for file storage operations."""
+    """MinIO client for file storage operations. Lazy initialization."""
 
     def __init__(self):
-        self.client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE
-        )
-        self._ensure_bucket()
+        self._client: Optional[Minio] = None
+
+    @property
+    def client(self) -> Minio:
+        """Lazy MinIO client - connects on first access."""
+        if self._client is None:
+            self._client = Minio(
+                settings.MINIO_ENDPOINT,
+                access_key=settings.MINIO_ACCESS_KEY,
+                secret_key=settings.MINIO_SECRET_KEY,
+                secure=settings.MINIO_SECURE
+            )
+            self._ensure_bucket()
+        return self._client
 
     def _ensure_bucket(self) -> None:
         """Create bucket if it doesn't exist."""
         try:
-            if not self.client.bucket_exists(settings.MINIO_BUCKET):
-                self.client.make_bucket(settings.MINIO_BUCKET)
+            if not self._client.bucket_exists(settings.MINIO_BUCKET):
+                self._client.make_bucket(settings.MINIO_BUCKET)
         except S3Error as e:
-            # Log error but don't fail init - bucket may already exist
             print(f"MinIO bucket check error: {e}")
 
     async def upload_file(

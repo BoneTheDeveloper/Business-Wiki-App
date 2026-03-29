@@ -1,7 +1,7 @@
 """RAG service for chunking, embeddings, and vector search."""
 from typing import List, Dict, Any, Optional
 from openai import AsyncOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
 

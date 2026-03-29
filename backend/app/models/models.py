@@ -1,6 +1,7 @@
 """SQLAlchemy ORM models."""
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Text, Enum as SQLEnum, Index, UniqueConstraint, CheckConstraint, BigInteger
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 import uuid
@@ -86,7 +87,7 @@ class Document(Base):
     format = Column(String(20))
     status = Column(SQLEnum(DocumentStatus), default=DocumentStatus.PENDING)
     visibility = Column(SQLEnum(DocumentVisibility), default=DocumentVisibility.PRIVATE)
-    doc_metadata = Column(JSONB, default=dict)
+    doc_metadata = Column(JSON, default=dict)
     extracted_text = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -111,7 +112,7 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
     embedding = Column(Vector(1536))  # OpenAI text-embedding-3-small dimensions
     chunk_index = Column(Integer, nullable=False)
-    chunk_metadata = Column(JSONB, default=dict)
+    chunk_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     document = relationship("Document", back_populates="chunks")
@@ -129,7 +130,7 @@ class SocialAccount(Base):
     access_token = Column(String(500), nullable=True)
     refresh_token = Column(String(500), nullable=True)
     expires_at = Column(DateTime, nullable=True)
-    profile_data = Column(JSONB, default=dict)
+    profile_data = Column(JSON, default=dict)
     linked_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -161,7 +162,7 @@ class Organization(Base):
     current_storage_bytes = Column(BigInteger, default=0)
 
     # Settings
-    settings = Column(JSONB, default=dict)
+    settings = Column(JSON, default=dict)
     is_active = Column(Boolean, default=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
