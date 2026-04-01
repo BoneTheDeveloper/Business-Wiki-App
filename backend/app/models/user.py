@@ -38,3 +38,7 @@ class User(Base):
         "GroupMember", foreign_keys="GroupMember.user_id",
         back_populates="user", cascade="all, delete-orphan",
     )
+    social_accounts = relationship(
+        "SocialAccount", foreign_keys="SocialAccount.user_id",
+        back_populates="user", cascade="all, delete-orphan",
+    )

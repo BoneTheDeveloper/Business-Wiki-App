@@ -54,7 +54,7 @@ class DocumentChunk(Base):
         nullable=False, index=True,
     )
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(1536))  # OpenAI text-embedding-3-small dimensions
+    embedding = Column(Vector(1536))  # Gemini embedding dimensions (1536, normalized)
     chunk_index = Column(Integer, nullable=False)
     chunk_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)

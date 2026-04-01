@@ -82,7 +82,7 @@ def process_document_task(
                     chunks = rag_service.chunk_text(parsed['text'], doc.metadata)
                     chunks_created = 0
 
-                    if chunks and settings.OPENAI_API_KEY:
+                    if chunks and settings.GOOGLE_API_KEY:
                         # Batch embed for efficiency
                         contents = [c['content'] for c in chunks]
                         embeddings = await rag_service.embed_batch(contents)
@@ -179,7 +179,7 @@ def reindex_document_task(document_id: str) -> Dict[str, Any]:
             chunks = rag_service.chunk_text(doc.extracted_text, doc.metadata)
             chunks_created = 0
 
-            if chunks and settings.OPENAI_API_KEY:
+            if chunks and settings.GOOGLE_API_KEY:
                 from app.models.models import DocumentChunk
 
                 contents = [c['content'] for c in chunks]

@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "documents"
     MINIO_SECURE: bool = False
 
-    # OpenAI
-    OPENAI_API_KEY: str = ""
+    # Google Gemini
+    GOOGLE_API_KEY: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
