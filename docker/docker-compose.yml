@@ -2,19 +2,19 @@ services:
   redis:
     image: redis:7.2-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
 
   minio:
     image: minio/minio:latest
-    command: server /data --console-address ":9001"
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT:-9001}"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
 
@@ -23,10 +23,10 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@host.docker.internal:54322/postgres
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@host.docker.internal:${SUPABASE_DB_PORT:-54322}/postgres
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
@@ -48,7 +48,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:5173"
+      - "${FRONTEND_PORT:-3000}:5173"
     environment:
       VITE_SUPABASE_URL: ${SUPABASE_URL:-http://127.0.0.1:54321}
       VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
@@ -64,8 +64,8 @@ services:
       dockerfile: Dockerfile
     command: uv run celery -A app.celery_app worker --loglevel=info
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@host.docker.internal:54322/postgres
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@host.docker.internal:${SUPABASE_DB_PORT:-54322}/postgres
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
