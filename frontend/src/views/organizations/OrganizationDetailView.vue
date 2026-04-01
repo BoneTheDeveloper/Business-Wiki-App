@@ -165,7 +165,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Role *
             </label>
-            <Select
+            <Dropdown
               v-model="inviteRole"
               :options="roleOptions"
               optionLabel="label"
@@ -202,7 +202,7 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Select from 'primevue/select'
+import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
 import Avatar from 'primevue/avatar'
 import Message from 'primevue/message'

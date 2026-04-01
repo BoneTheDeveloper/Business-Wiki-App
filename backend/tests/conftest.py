@@ -8,7 +8,6 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.models.database import Base, get_db
 from app.models.models import User, UserRole
-from app.auth.security import hash_password
 
 # Use SQLite for testing (no external DB needed)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -68,10 +67,9 @@ async def client(db_session):
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession):
-    """Create a test user."""
+    """Create a test user (simulates Supabase-auth-synced user)."""
     user = User(
         email="test@example.com",
-        password_hash=hash_password("password123"),
         role=UserRole.USER,
         is_active=True
     )
@@ -83,10 +81,9 @@ async def test_user(db_session: AsyncSession):
 
 @pytest.fixture
 async def admin_user(db_session: AsyncSession):
-    """Create an admin test user."""
+    """Create an admin test user (simulates Supabase-auth-synced user)."""
     user = User(
         email="admin@example.com",
-        password_hash=hash_password("admin123"),
         role=UserRole.ADMIN,
         is_active=True
     )
@@ -98,23 +95,14 @@ async def admin_user(db_session: AsyncSession):
 
 @pytest.fixture
 async def auth_headers(client: AsyncClient, test_user: User):
-    """Get auth headers for test user."""
-    response = await client.post("/api/v1/auth/login", json={
-        "email": "test@example.com",
-        "password": "password123"
-    })
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    """Get auth headers with mocked Supabase JWT for test user."""
+    # In Supabase auth world, tests need to mock verify_supabase_token
+    # For now, return a placeholder header -- individual tests should mock
+    # the get_current_user dependency directly.
+    return {"Authorization": f"Bearer test-token-{test_user.id}"}
 
 
 @pytest.fixture
 async def admin_auth_headers(client: AsyncClient, admin_user: User):
-    """Get auth headers for admin user."""
-    response = await client.post("/api/v1/auth/login", json={
-        "email": "admin@example.com",
-        "password": "admin123"
-    })
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    """Get auth headers with mocked Supabase JWT for admin user."""
+    return {"Authorization": f"Bearer test-token-{admin_user.id}"}

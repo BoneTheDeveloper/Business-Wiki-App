@@ -5,9 +5,9 @@ from uuid import UUID
 
 from app.models.database import get_db
 from app.models.models import User
-from app.models.schemas import (
+from app.schemas.group import (
     GroupCreate, GroupUpdate, GroupResponse, GroupWithMemberCount,
-    GroupMemberAdd, GroupMemberResponse
+    GroupMemberAdd, GroupMemberResponse,
 )
 from app.dependencies import get_current_user
 from app.services.group_service import group_service

@@ -192,7 +192,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Select Member *
             </label>
-            <Select
+            <Dropdown
               v-model="addMemberUserId"
               :options="availableMembers"
               optionLabel="label"
@@ -235,7 +235,7 @@ import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
-import Select from 'primevue/select'
+import Dropdown from 'primevue/dropdown'
 import Avatar from 'primevue/avatar'
 import Message from 'primevue/message'
 import Menu from 'primevue/menu'

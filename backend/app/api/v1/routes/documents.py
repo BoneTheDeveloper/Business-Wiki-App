@@ -8,9 +8,9 @@ import uuid
 
 from app.models.database import get_db
 from app.models.models import Document, DocumentStatus, DocumentVisibility, User
-from app.models.schemas import (
+from app.schemas.document import (
     DocumentResponse, DocumentList, DocumentVisibilityUpdate,
-    DocumentAccessGrant, DocumentAccessResponse
+    DocumentAccessGrant, DocumentAccessResponse,
 )
 from app.dependencies import get_current_user
 from app.services.minio_service import minio_service

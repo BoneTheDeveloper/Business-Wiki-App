@@ -9,7 +9,7 @@ from uuid import UUID
 
 from app.models.database import get_db
 from app.models.models import User, UserRole, Document, DocumentStatus, DocumentChunk
-from app.models.schemas import UserResponse
+from app.schemas.user import UserResponse
 from app.dependencies import get_current_user, require_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])

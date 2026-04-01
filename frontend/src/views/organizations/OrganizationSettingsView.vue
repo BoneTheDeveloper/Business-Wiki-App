@@ -164,7 +164,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 New Owner *
               </label>
-              <Select
+              <Dropdown
                 v-model="transferToUserId"
                 :options="adminMembers"
                 optionLabel="label"
@@ -258,7 +258,7 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import Select from 'primevue/select'
+import Dropdown from 'primevue/dropdown'
 import Message from 'primevue/message'
 import Divider from 'primevue/divider'
 import ProgressBar from 'primevue/progressbar'

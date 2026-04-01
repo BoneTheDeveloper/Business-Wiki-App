@@ -1,12 +1,14 @@
 /**
- * Authentication store with Pinia.
- * Manages user state, tokens, login/logout/refresh operations.
+ * Auth store -- delegates all auth to Supabase client.
+ * No manual token storage. Supabase manages session persistence.
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 import api from '@/api/client'
 
-export interface User {
+export interface AppUser {
   id: string
   email: string
   role: 'user' | 'editor' | 'admin'
@@ -14,109 +16,146 @@ export interface User {
   email_verified?: boolean
   name?: string
   avatar_url?: string
-  oauth_provider?: string
   created_at: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
-  const accessToken = ref<string | null>(localStorage.getItem('access_token'))
+  const user = ref<AppUser | null>(null)
+  const supabaseUser = ref<User | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const isAuthenticated = computed(() => !!accessToken.value && !!user.value)
+  const isAuthenticated = computed(() => !!supabaseUser.value && !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
-  async function login(email: string, password: string) {
-    loading.value = true
-    error.value = null
-
-    try {
-      const { data } = await api.post('/auth/login', { email, password })
-
-      accessToken.value = data.access_token
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('refresh_token', data.refresh_token)
-
-      await fetchUser()
-      return true
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Login failed'
-      return false
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function register(email: string, password: string) {
-    loading.value = true
-    error.value = null
-
-    try {
-      await api.post('/auth/register', { email, password })
-      return true
-    } catch (e: any) {
-      error.value = e.response?.data?.detail || 'Registration failed'
-      return false
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function fetchUser() {
+  /**
+   * Fetch app user from backend /auth/me.
+   * Called after Supabase session is confirmed.
+   */
+  async function fetchUser(): Promise<void> {
     try {
       const { data } = await api.get('/auth/me')
       user.value = data
-    } catch (e) {
+    } catch {
       user.value = null
     }
   }
 
-  async function refreshToken() {
-    const refreshTokenValue = localStorage.getItem('refresh_token')
-    if (!refreshTokenValue) {
-      throw new Error('No refresh token')
-    }
+  /**
+   * Email/password login via Supabase.
+   */
+  async function login(email: string, password: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
 
-    const { data } = await api.post('/auth/refresh', {
-      refresh_token: refreshTokenValue
+    try {
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (sbError) {
+        error.value = sbError.message
+        return false
+      }
+
+      supabaseUser.value = data.user
+      await fetchUser()
+      return true
+    } catch (e: any) {
+      error.value = e.message || 'Login failed'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Email/password registration via Supabase.
+   */
+  async function register(email: string, password: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { data, error: sbError } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+
+      if (sbError) {
+        error.value = sbError.message
+        return false
+      }
+
+      // If email confirmation is disabled, user is immediately logged in
+      if (data.user && data.session) {
+        supabaseUser.value = data.user
+        await fetchUser()
+      }
+
+      return true
+    } catch (e: any) {
+      error.value = e.message || 'Registration failed'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Google OAuth via Supabase.
+   * Supabase handles the entire OAuth flow and redirect.
+   */
+  async function loginWithGoogle(): Promise<void> {
+    const { error: sbError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`,
+      },
     })
 
-    accessToken.value = data.access_token
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('refresh_token', data.refresh_token)
+    if (sbError) {
+      error.value = sbError.message
+    }
   }
 
-  function logout() {
+  /**
+   * Logout via Supabase.
+   */
+  async function logout(): Promise<void> {
+    await supabase.auth.signOut()
     user.value = null
-    accessToken.value = null
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
+    supabaseUser.value = null
   }
 
-  // OAuth login - redirect to Google
-  function loginWithGoogle() {
-    window.location.href = '/api/v1/auth/oauth/google'
-  }
+  /**
+   * Initialize auth state from existing Supabase session.
+   * Call once on app mount or first router navigation.
+   */
+  async function init(): Promise<void> {
+    const { data: { session } } = await supabase.auth.getSession()
 
-  // Handle OAuth callback with tokens
-  async function handleOAuthCallback(access_token: string, refresh_token: string) {
-    accessToken.value = access_token
-    localStorage.setItem('access_token', access_token)
-    localStorage.setItem('refresh_token', refresh_token)
-    await fetchUser()
-  }
-
-  // Initialize - fetch user if token exists
-  async function init() {
-    if (accessToken.value) {
+    if (session?.user) {
+      supabaseUser.value = session.user
       await fetchUser()
     }
+
+    // Listen for auth state changes (OAuth redirect, token refresh, etc.)
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        supabaseUser.value = session.user
+        await fetchUser()
+      } else if (event === 'SIGNED_OUT') {
+        user.value = null
+        supabaseUser.value = null
+      }
+    })
   }
 
   return {
     user,
-    accessToken,
+    supabaseUser,
     loading,
     error,
     isAuthenticated,
@@ -124,10 +163,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     fetchUser,
-    refreshToken,
     logout,
     loginWithGoogle,
-    handleOAuthCallback,
-    init
+    init,
   }
 })

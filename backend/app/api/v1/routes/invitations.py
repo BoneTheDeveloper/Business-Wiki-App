@@ -6,9 +6,9 @@ from uuid import UUID
 
 from app.models.database import get_db
 from app.models.models import User, OrgRole
-from app.models.schemas import (
+from app.schemas.invitation import (
     InvitationCreate, InvitationResponse, InvitationAccept,
-    InvitationList
+    InvitationList,
 )
 from app.dependencies import get_current_user
 from app.services.invitation_service import invitation_service

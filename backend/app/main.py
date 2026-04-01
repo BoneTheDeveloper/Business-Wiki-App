@@ -2,8 +2,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-import secrets
 
 from app.config import settings
 from app.models import init_db
@@ -35,12 +33,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Session middleware for OAuth state management
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=secrets.token_urlsafe(32)
-)
-
+# CORS middleware (Supabase Auth handles sessions -- no server-side session needed)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],

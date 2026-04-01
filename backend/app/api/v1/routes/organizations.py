@@ -6,12 +6,12 @@ from uuid import UUID
 
 from app.models.database import get_db
 from app.models.models import User, OrgRole
-from app.models.schemas import (
+from app.schemas.organization import (
     OrganizationCreate, OrganizationUpdate, OrganizationResponse,
     OrganizationWithMemberCount, OrganizationMemberCreate,
     OrganizationMemberUpdate, OrganizationMemberResponse,
-    QuotaUsage
 )
+from app.schemas.quota import QuotaUsage
 from app.dependencies import get_current_user
 from app.services.organization_service import organization_service
 from app.services.permission_service import permission_service, Permission

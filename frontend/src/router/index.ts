@@ -92,12 +92,16 @@ const router = createRouter({
   ]
 })
 
+// Track if auth has been initialized to avoid duplicate init calls
+let authInitialized = false
+
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // Initialize auth state if not already done
-  if (authStore.accessToken && !authStore.user) {
-    await authStore.fetchUser()
+  // Initialize auth state from Supabase session on first navigation
+  if (!authInitialized) {
+    authInitialized = true
+    await authStore.init()
   }
 
   // Auth required but not authenticated

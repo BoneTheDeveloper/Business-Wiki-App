@@ -1,7 +1,7 @@
 """WebSocket routes for real-time updates."""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.utils.websocket import ws_manager
-from app.auth.security import decode_token
+from app.auth.supabase import verify_supabase_token
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,12 +17,13 @@ async def websocket_documents(
     """
     WebSocket endpoint for document status updates.
 
-    Client connects with JWT token, receives real-time updates
+    Client connects with Supabase JWT token, receives real-time updates
     about document processing status.
     """
-    # Validate token
-    payload = decode_token(token)
-    if not payload:
+    # Validate Supabase JWT
+    try:
+        payload = await verify_supabase_token(token)
+    except Exception:
         await websocket.close(code=4001, reason="Invalid token")
         return
 

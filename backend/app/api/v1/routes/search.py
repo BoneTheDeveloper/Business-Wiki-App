@@ -6,7 +6,7 @@ from typing import Optional, List
 
 from app.models.database import get_db
 from app.models.models import User, Document
-from app.models.schemas import SearchRequest, SearchResponse, SearchResult
+from app.schemas.search import SearchRequest, SearchResponse, SearchResult
 from app.dependencies import get_current_user
 from app.services.rag_service import rag_service
 

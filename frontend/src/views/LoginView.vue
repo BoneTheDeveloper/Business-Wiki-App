@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth-store'
 import { useToast } from 'primevue/usetoast'
 import Toast from 'primevue/toast'
-import api from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,6 +16,19 @@ const loading = ref(false)
 const showPassword = ref(false)
 const rememberMe = ref(false)
 
+onMounted(() => {
+  // Show OAuth error if redirected back with error
+  const oauthError = route.query.oauth_error as string
+  if (oauthError) {
+    const messages: Record<string, string> = {
+      missing_tokens: 'Google login failed - missing credentials',
+      callback_failed: 'Google login failed - please try again',
+      access_denied: 'Google login was cancelled',
+    }
+    toast.add({ severity: 'error', summary: 'OAuth Error', detail: messages[oauthError] || 'Google login failed' })
+  }
+})
+
 async function handleLogin() {
   loading.value = true
 
@@ -25,9 +37,7 @@ async function handleLogin() {
 
     if (success) {
       toast.add({ severity: 'success', summary: 'Welcome', detail: 'Login successful' })
-
-      // Redirect to intended page or dashboard
-      const redirect = route.query.redirect as string || '/'
+      const redirect = (route.query.redirect as string) || '/'
       router.push(redirect)
     } else {
       toast.add({ severity: 'error', summary: 'Error', detail: authStore.error || 'Login failed' })
@@ -38,11 +48,14 @@ async function handleLogin() {
 }
 
 async function handleGoogleLogin() {
+  loading.value = true
   try {
-    // Redirect to backend OAuth endpoint
-    window.location.href = `${api.defaults.baseURL}/auth/oauth/google`
-  } catch (error) {
+    await authStore.loginWithGoogle()
+    // Page will redirect to Google -- no further action needed here
+  } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to initiate Google login' })
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -171,7 +184,11 @@ async function handleGoogleLogin() {
 
       <!-- Social Logins -->
       <div class="grid grid-cols-2 gap-4">
-        <button class="flex items-center justify-center px-4 py-2.5 border border-slate-700 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all">
+        <button
+          type="button"
+          @click="handleGoogleLogin"
+          class="flex items-center justify-center px-4 py-2.5 border border-slate-700 rounded-xl bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-white transition-all"
+        >
           <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
