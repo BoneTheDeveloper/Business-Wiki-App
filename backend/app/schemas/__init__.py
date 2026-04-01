@@ -12,6 +12,8 @@ from app.schemas.search import (
 from app.schemas.organization import (
     OrganizationCreate, OrganizationUpdate, OrganizationResponse, OrganizationWithMemberCount,
     OrganizationMemberCreate, OrganizationMemberUpdate, OrganizationMemberResponse,
+)
+from app.schemas.invitation import (
     InvitationCreate, InvitationResponse, InvitationAccept, InvitationList,
 )
 from app.schemas.group import (

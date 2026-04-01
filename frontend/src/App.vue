@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth-store'
 import AppLayout from '@/components/AppLayout.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
-
-onMounted(async () => {
-  await authStore.init()
-})
 </script>
 
 <template>

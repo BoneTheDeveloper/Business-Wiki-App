@@ -32,6 +32,24 @@ class PermissionService:
         OrgRole.VIEWER: 1,
     }
 
+    # Permissions granted per role (static mapping)
+    ROLE_PERMISSIONS = {
+        OrgRole.OWNER: [
+            Permission.VIEW, Permission.EDIT, Permission.DELETE,
+            Permission.MANAGE, Permission.INVITE, Permission.CREATE_GROUP
+        ],
+        OrgRole.ADMIN: [
+            Permission.VIEW, Permission.EDIT, Permission.DELETE,
+            Permission.INVITE, Permission.CREATE_GROUP
+        ],
+        OrgRole.MEMBER: [
+            Permission.VIEW, Permission.EDIT, Permission.CREATE_GROUP
+        ],
+        OrgRole.VIEWER: [
+            Permission.VIEW
+        ],
+    }
+
     @staticmethod
     def get_role_level(role: OrgRole) -> int:
         """Get numeric level for role."""
@@ -65,25 +83,7 @@ class PermissionService:
         if not role:
             return False
 
-        # Define permissions by role
-        role_permissions = {
-            OrgRole.OWNER: [
-                Permission.VIEW, Permission.EDIT, Permission.DELETE,
-                Permission.MANAGE, Permission.INVITE, Permission.CREATE_GROUP
-            ],
-            OrgRole.ADMIN: [
-                Permission.VIEW, Permission.EDIT, Permission.DELETE,
-                Permission.INVITE, Permission.CREATE_GROUP
-            ],
-            OrgRole.MEMBER: [
-                Permission.VIEW, Permission.EDIT, Permission.CREATE_GROUP
-            ],
-            OrgRole.VIEWER: [
-                Permission.VIEW
-            ],
-        }
-
-        return permission in role_permissions.get(role, [])
+        return permission in PermissionService.ROLE_PERMISSIONS.get(role, [])
 
     @staticmethod
     async def can_manage_member(
@@ -162,6 +162,14 @@ class PermissionService:
         return False
 
     @staticmethod
+    def _has_sufficient_access(
+        grant_level: AccessLevel,
+        required_level: AccessLevel
+    ) -> bool:
+        """Check if a grant level satisfies the required access level."""
+        return required_level == AccessLevel.VIEW or grant_level == AccessLevel.EDIT
+
+    @staticmethod
     async def _check_explicit_access(
         db: AsyncSession,
         document_id: UUID,
@@ -178,11 +186,8 @@ class PermissionService:
         )
         access = user_access.scalar_one_or_none()
 
-        if access:
-            if required_level == AccessLevel.VIEW:
-                return True
-            if required_level == AccessLevel.EDIT and access.access_level == AccessLevel.EDIT:
-                return True
+        if access and PermissionService._has_sufficient_access(access.access_level, required_level):
+            return True
 
         # Check group-based access
         group_access = await db.execute(
@@ -197,9 +202,7 @@ class PermissionService:
         group_grants = group_access.scalars().all()
 
         for grant in group_grants:
-            if required_level == AccessLevel.VIEW:
-                return True
-            if required_level == AccessLevel.EDIT and grant.access_level == AccessLevel.EDIT:
+            if PermissionService._has_sufficient_access(grant.access_level, required_level):
                 return True
 
         return False

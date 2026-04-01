@@ -24,6 +24,28 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
+async def _get_document_with_access(
+    doc_id: str,
+    db: AsyncSession,
+    user: User,
+    require_edit: bool = False
+) -> Document:
+    """Fetch document and verify access permission. Raises HTTPException if not found or denied."""
+    result = await db.execute(
+        select(Document).where(Document.id == doc_id)
+    )
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    checker = permission_service.can_modify_document if require_edit else permission_service.check_document_access
+    if not await checker(db, doc, user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return doc
+
+
 @router.post("/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
@@ -126,45 +148,29 @@ async def list_documents(
     """List documents with optional organization filtering."""
     # Build base query
     if organization_id:
-        # Check org membership
-        if not await organization_service.is_member(db, organization_id, current_user.id):
-            raise HTTPException(status_code=403, detail="Not a member of this organization")
-
-        # Get accessible documents query
-        query = await permission_service.get_accessible_documents_query(
+        # Get accessible documents query (includes membership check)
+        base_query = await permission_service.get_accessible_documents_query(
             db, organization_id, current_user.id
         )
-        if query is None:
+        if base_query is None:
             return DocumentList(items=[], total=0, skip=skip, limit=limit)
     else:
-        # Legacy: show only user's own documents
-        query = select(Document).where(Document.user_id == current_user.id)
+        base_query = select(Document).where(Document.user_id == current_user.id)
 
+    # Build count query from the same base (avoids double permission lookup)
+    count_base = base_query
+    if status:
+        count_base = count_base.where(Document.status == status)
+    count_query = select(func.count()).select_from(count_base.subquery())
+    total = (await db.execute(count_query)).scalar() or 0
+
+    # Build data query with pagination
+    query = base_query
     if status:
         query = query.where(Document.status == status)
-
     query = query.order_by(Document.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
     documents = list(result.scalars().all())
-
-    # Get total count
-    if organization_id:
-        count_query = await permission_service.get_accessible_documents_query(
-            db, organization_id, current_user.id
-        )
-        if count_query is not None:
-            count_query = select(func.count()).select_from(count_query.subquery())
-        else:
-            count_query = select(func.count(Document.id)).where(Document.id == None)
-    else:
-        count_query = select(func.count(Document.id)).where(
-            Document.user_id == current_user.id
-        )
-
-    if status and count_query is not None:
-        count_query = count_query.where(Document.status == status)
-
-    total = (await db.execute(count_query)).scalar() or 0
 
     return DocumentList(
         items=documents,
@@ -181,17 +187,7 @@ async def get_document(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific document by ID."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check access permission
-    if not await permission_service.check_document_access(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    doc = await _get_document_with_access(doc_id, db, current_user)
 
     return doc
 
@@ -203,17 +199,7 @@ async def get_document_status(
     current_user: User = Depends(get_current_user)
 ):
     """Get document processing status."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check access permission
-    if not await permission_service.check_document_access(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    doc = await _get_document_with_access(doc_id, db, current_user)
 
     return {
         "id": str(doc.id),
@@ -232,17 +218,7 @@ async def delete_document(
     current_user: User = Depends(get_current_user)
 ):
     """Delete a document and its file."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check modify permission
-    if not await permission_service.can_modify_document(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Cannot delete this document")
+    doc = await _get_document_with_access(doc_id, db, current_user, require_edit=True)
 
     # Store org info before deletion
     org_id = doc.organization_id
@@ -278,17 +254,7 @@ async def update_document_visibility(
     current_user: User = Depends(get_current_user)
 ):
     """Update document visibility (owner or admin only)."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check modify permission
-    if not await permission_service.can_modify_document(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Cannot modify this document")
+    doc = await _get_document_with_access(doc_id, db, current_user, require_edit=True)
 
     doc.visibility = data.visibility
     await db.commit()
@@ -305,17 +271,7 @@ async def grant_document_access(
     current_user: User = Depends(get_current_user)
 ):
     """Grant access to document for user or group."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check modify permission
-    if not await permission_service.can_modify_document(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Cannot modify this document")
+    doc = await _get_document_with_access(doc_id, db, current_user, require_edit=True)
 
     # Validate that exactly one of user_id or group_id is provided
     if (data.user_id is None and data.group_id is None) or \
@@ -351,17 +307,7 @@ async def revoke_document_access(
     current_user: User = Depends(get_current_user)
 ):
     """Revoke access to document."""
-    result = await db.execute(
-        select(Document).where(Document.id == doc_id)
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Check modify permission
-    if not await permission_service.can_modify_document(db, doc, current_user.id):
-        raise HTTPException(status_code=403, detail="Cannot modify this document")
+    doc = await _get_document_with_access(doc_id, db, current_user, require_edit=True)
 
     # Find and delete access grant
     from app.models.models import DocumentAccess

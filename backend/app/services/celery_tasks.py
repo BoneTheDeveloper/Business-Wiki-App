@@ -68,8 +68,8 @@ def process_document_task(
                     parsed = DocumentParser.parse(tmp_path, format_type)
 
                     # Update document metadata
-                    doc.metadata = {
-                        **doc.metadata,
+                    doc.doc_metadata = {
+                        **doc.doc_metadata,
                         **parsed['metadata'],
                         'text_length': len(parsed['text']),
                         'word_count': len(parsed['text'].split())
@@ -79,7 +79,7 @@ def process_document_task(
                     doc.extracted_text = parsed['text'][:100000]
 
                     # Chunk and embed text
-                    chunks = rag_service.chunk_text(parsed['text'], doc.metadata)
+                    chunks = rag_service.chunk_text(parsed['text'], doc.doc_metadata)
                     chunks_created = 0
 
                     if chunks and settings.GOOGLE_API_KEY:
@@ -176,7 +176,7 @@ def reindex_document_task(document_id: str) -> Dict[str, Any]:
             )
 
             # Re-chunk and embed
-            chunks = rag_service.chunk_text(doc.extracted_text, doc.metadata)
+            chunks = rag_service.chunk_text(doc.extracted_text, doc.doc_metadata)
             chunks_created = 0
 
             if chunks and settings.GOOGLE_API_KEY:
@@ -196,7 +196,7 @@ def reindex_document_task(document_id: str) -> Dict[str, Any]:
                     db.add(db_chunk)
                     chunks_created += 1
 
-                doc.metadata['chunk_count'] = chunks_created
+                doc.doc_metadata['chunk_count'] = chunks_created
                 await db.commit()
 
             return {"document_id": document_id, "chunks_created": chunks_created}

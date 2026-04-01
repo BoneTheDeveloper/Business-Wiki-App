@@ -1,11 +1,11 @@
 """Search API routes for semantic document search."""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from typing import Optional, List
 
 from app.models.database import get_db
-from app.models.models import User, Document
+from app.models.models import User, Document, DocumentStatus
 from app.schemas.search import SearchRequest, SearchResponse, SearchResult
 from app.dependencies import get_current_user
 from app.services.rag_service import rag_service
@@ -67,11 +67,8 @@ async def search_suggestions(
         select(Document.filename)
         .where(
             Document.user_id == current_user.id,
-            Document.status == "completed",
-            or_(
-                Document.filename.ilike(f"{q}%"),
-                Document.filename.ilike(f"%{q}%")
-            )
+            Document.status == DocumentStatus.COMPLETED,
+            Document.filename.ilike(f"%{q}%")
         )
         .distinct()
         .limit(limit)

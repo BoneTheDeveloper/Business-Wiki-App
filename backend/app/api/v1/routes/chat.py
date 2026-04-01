@@ -1,47 +1,15 @@
 """Chat API routes for RAG-powered conversations."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-from typing import List, Optional
 
 from app.models.database import get_db
 from app.models.models import User
 from app.dependencies import get_current_user
+from app.schemas.search import ChatRequest, ChatResponse
 from app.services.rag_service import rag_service
 from app.services.llm_service import llm_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-
-class ChatMessage(BaseModel):
-    """Single chat message."""
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    """Chat request with query and optional context."""
-    query: str
-    document_ids: Optional[List[str]] = None
-    conversation_history: Optional[List[ChatMessage]] = None
-    top_k: int = 5
-
-
-class ChatSource(BaseModel):
-    """Source citation in chat response."""
-    document_id: str
-    filename: str
-    chunk_id: str
-    similarity: float
-    page: Optional[int] = None
-
-
-class ChatResponse(BaseModel):
-    """Chat response with answer and sources."""
-    answer: str
-    sources: List[ChatSource]
-    model: str
-    usage: dict
 
 
 @router.post("", response_model=ChatResponse)

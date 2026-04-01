@@ -6,7 +6,7 @@ from app.config import settings
 
 engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
-    echo=True
+    echo=False
 )
 
 AsyncSessionLocal = async_sessionmaker(

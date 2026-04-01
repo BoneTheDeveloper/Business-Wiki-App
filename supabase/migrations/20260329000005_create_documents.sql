@@ -25,7 +25,7 @@ CREATE TABLE document_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    embedding extensions.vector(1536), -- OpenAI text-embedding-3-small
+    embedding extensions.vector(1536), -- Gemini text-embedding-004
     chunk_index INTEGER NOT NULL,
     chunk_metadata JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
