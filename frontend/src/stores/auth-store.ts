@@ -131,18 +131,21 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Initialize auth state from existing Supabase session.
-   * Call once on app mount or first router navigation.
+   * Handles PKCE callback (code in URL) and normal session restore.
    */
   async function init(): Promise<void> {
-    const { data: { session } } = await supabase.auth.getSession()
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
 
-    if (session?.user) {
-      supabaseUser.value = session.user
-      await fetchUser()
-    }
-
-    // Listen for auth state changes (OAuth redirect, token refresh, etc.)
+    // Register auth listener BEFORE any async exchange to avoid race conditions
+    // onAuthStateChange fires INITIAL_SESSION on first subscribe — skip it to
+    // prevent duplicate fetchUser() calls during PKCE exchange.
+    let skipInitialEvent = true
     supabase.auth.onAuthStateChange(async (event, session) => {
+      if (skipInitialEvent) {
+        skipInitialEvent = false
+        return
+      }
       if (event === 'SIGNED_IN' && session?.user) {
         supabaseUser.value = session.user
         await fetchUser()
@@ -151,6 +154,25 @@ export const useAuthStore = defineStore('auth', () => {
         supabaseUser.value = null
       }
     })
+
+    if (code) {
+      // PKCE flow — exchange auth code for session
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      if (exchangeError) {
+        error.value = 'Google login failed — please try again'
+      } else if (data.session?.user) {
+        supabaseUser.value = data.session.user
+        await fetchUser()
+      }
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else {
+      // Restore existing session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        supabaseUser.value = session.user
+        await fetchUser()
+      }
+    }
   }
 
   return {

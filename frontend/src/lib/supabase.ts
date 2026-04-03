@@ -1,6 +1,7 @@
 /**
  * Supabase client initialization.
- * Uses env vars from Vite: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.
+ * Uses PKCE flow for OAuth — code verifier stored in localStorage,
+ * exchanged on callback via exchangeCodeForSession().
  */
 import { createClient } from '@supabase/supabase-js'
 
@@ -13,4 +14,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+  },
+})
