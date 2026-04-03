@@ -131,21 +131,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Initialize auth state from existing Supabase session.
-   * Handles PKCE callback (code in URL) and normal session restore.
+   * Handles PKCE (?code=), implicit flow (#access_token=), and session restore.
+   * `detectSessionInUrl: true` handles most cases automatically, but we
+   * also manually handle PKCE exchange as a fallback for edge cases.
    */
   async function init(): Promise<void> {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-
-    // Register auth listener BEFORE any async exchange to avoid race conditions
-    // onAuthStateChange fires INITIAL_SESSION on first subscribe — skip it to
-    // prevent duplicate fetchUser() calls during PKCE exchange.
-    let skipInitialEvent = true
+    // Listen for ongoing auth state changes (token refresh, sign out, etc.)
     supabase.auth.onAuthStateChange(async (event, session) => {
-      if (skipInitialEvent) {
-        skipInitialEvent = false
-        return
-      }
       if (event === 'SIGNED_IN' && session?.user) {
         supabaseUser.value = session.user
         await fetchUser()
@@ -155,23 +147,25 @@ export const useAuthStore = defineStore('auth', () => {
       }
     })
 
+    // Check for PKCE code in URL — exchange it for a session
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
     if (code) {
-      // PKCE flow — exchange auth code for session
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      if (exchangeError) {
-        error.value = 'Google login failed — please try again'
-      } else if (data.session?.user) {
+      if (!exchangeError && data.session?.user) {
         supabaseUser.value = data.session.user
         await fetchUser()
       }
+      // Clean URL: remove code param to prevent re-exchange on refresh
       window.history.replaceState({}, document.title, window.location.pathname)
-    } else {
-      // Restore existing session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        supabaseUser.value = session.user
-        await fetchUser()
-      }
+      return
+    }
+
+    // Restore existing session (supabase-js also handles implicit flow hash here)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      supabaseUser.value = session.user
+      await fetchUser()
     }
   }
 
