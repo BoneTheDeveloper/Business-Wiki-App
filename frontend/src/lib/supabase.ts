@@ -1,7 +1,7 @@
 /**
  * Supabase client initialization.
- * Uses PKCE flow for OAuth — code verifier stored in localStorage,
- * exchanged on callback via exchangeCodeForSession().
+ * PKCE flow with detectSessionInUrl: Supabase auto-exchanges ?code= on redirect.
+ * No manual exchangeCodeForSession() needed.
  */
 import { createClient } from '@supabase/supabase-js'
 
@@ -17,6 +17,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: 'pkce',
-    detectSessionInUrl: true,
+    detectSessionInUrl: true, // Let Supabase auto-handle PKCE exchange from ?code=
+    persistSession: true,
+    autoRefreshToken: true,
   },
 })

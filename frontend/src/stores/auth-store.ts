@@ -28,17 +28,26 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!supabaseUser.value && !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
+  // Guard against concurrent fetchUser() calls (e.g. onAuthStateChange + getSession race)
+  let fetchUserPromise: Promise<void> | null = null
+
   /**
    * Fetch app user from backend /auth/me.
-   * Called after Supabase session is confirmed.
+   * Deduplicates concurrent calls — only one in-flight request at a time.
    */
   async function fetchUser(): Promise<void> {
-    try {
-      const { data } = await api.get('/auth/me')
-      user.value = data
-    } catch {
-      user.value = null
-    }
+    if (fetchUserPromise) return fetchUserPromise
+    fetchUserPromise = (async () => {
+      try {
+        const { data } = await api.get('/auth/me')
+        user.value = data
+      } catch {
+        user.value = null
+      } finally {
+        fetchUserPromise = null
+      }
+    })()
+    return fetchUserPromise
   }
 
   /**
@@ -131,12 +140,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Initialize auth state from existing Supabase session.
-   * Handles PKCE (?code=), implicit flow (#access_token=), and session restore.
-   * `detectSessionInUrl: true` handles most cases automatically, but we
-   * also manually handle PKCE exchange as a fallback for edge cases.
+   * With detectSessionInUrl: true, Supabase auto-handles PKCE (?code=) exchange
+   * and fires SIGNED_IN via onAuthStateChange. No manual PKCE handling needed.
    */
   async function init(): Promise<void> {
-    // Listen for ongoing auth state changes (token refresh, sign out, etc.)
+    // Single listener handles ALL auth state changes:
+    // - SIGNED_IN (after PKCE auto-exchange, email login, OAuth redirect)
+    // - TOKEN_REFRESHED (automatic token rotation)
+    // - SIGNED_OUT (manual logout)
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         supabaseUser.value = session.user
@@ -147,23 +158,9 @@ export const useAuthStore = defineStore('auth', () => {
       }
     })
 
-    // Check for PKCE code in URL — exchange it for a session
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    if (code) {
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      if (!exchangeError && data.session?.user) {
-        supabaseUser.value = data.session.user
-        await fetchUser()
-      }
-      // Clean URL: remove code param to prevent re-exchange on refresh
-      window.history.replaceState({}, document.title, window.location.pathname)
-      return
-    }
-
-    // Restore existing session (supabase-js also handles implicit flow hash here)
+    // Restore existing session on page refresh (no SIGNED_IN event fires for this)
     const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
+    if (session?.user && !supabaseUser.value) {
       supabaseUser.value = session.user
       await fetchUser()
     }
