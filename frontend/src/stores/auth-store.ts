@@ -1,12 +1,11 @@
 /**
- * Auth store -- delegates all auth to Supabase client.
- * No manual token storage. Supabase manages session persistence.
+ * Auth store — fully Supabase SDK. No backend API calls for user data.
+ * User profile built from Supabase session + JWT app_role claim.
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import api from '@/api/client'
 
 export interface AppUser {
   id: string
@@ -19,57 +18,53 @@ export interface AppUser {
   created_at: string
 }
 
+/** Build AppUser from Supabase User. Role from JWT app_role claim (custom_access_token hook). */
+function buildUser(sbUser: User): AppUser {
+  return {
+    id: sbUser.id,
+    email: sbUser.email ?? '',
+    role: (sbUser.app_metadata?.app_role as AppUser['role']) || 'user',
+    is_active: true,
+    email_verified: sbUser.email_confirmed_at != null,
+    name: sbUser.user_metadata?.name || sbUser.user_metadata?.full_name,
+    avatar_url: sbUser.user_metadata?.avatar_url,
+    created_at: sbUser.created_at,
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AppUser | null>(null)
   const supabaseUser = ref<User | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const isAuthenticated = computed(() => !!supabaseUser.value && !!user.value)
+  const isAuthenticated = computed(() => !!supabaseUser.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
-  // Guard against concurrent fetchUser() calls (e.g. onAuthStateChange + getSession race)
-  let fetchUserPromise: Promise<void> | null = null
-
-  /**
-   * Fetch app user from backend /auth/me.
-   * Deduplicates concurrent calls — only one in-flight request at a time.
-   */
-  async function fetchUser(): Promise<void> {
-    if (fetchUserPromise) return fetchUserPromise
-    fetchUserPromise = (async () => {
-      try {
-        const { data } = await api.get('/auth/me')
-        user.value = data
-      } catch {
-        user.value = null
-      } finally {
-        fetchUserPromise = null
-      }
-    })()
-    return fetchUserPromise
+  /** Sync both refs from a Supabase User object. */
+  function syncUser(sbUser: User) {
+    supabaseUser.value = sbUser
+    user.value = buildUser(sbUser)
   }
 
-  /**
-   * Email/password login via Supabase.
-   */
+  /** Clear all auth state. */
+  function clearUser() {
+    user.value = null
+    supabaseUser.value = null
+  }
+
+  /** Email/password login via Supabase. */
   async function login(email: string, password: string): Promise<boolean> {
     loading.value = true
     error.value = null
 
     try {
-      const { data, error: sbError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({ email, password })
       if (sbError) {
         error.value = sbError.message
         return false
       }
-
-      supabaseUser.value = data.user
-      await fetchUser()
+      syncUser(data.user)
       return true
     } catch (e: any) {
       error.value = e.message || 'Login failed'
@@ -79,30 +74,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /**
-   * Email/password registration via Supabase.
-   */
+  /** Email/password registration via Supabase. */
   async function register(email: string, password: string): Promise<boolean> {
     loading.value = true
     error.value = null
 
     try {
-      const { data, error: sbError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
+      const { data, error: sbError } = await supabase.auth.signUp({ email, password })
       if (sbError) {
         error.value = sbError.message
         return false
       }
-
-      // If email confirmation is disabled, user is immediately logged in
       if (data.user && data.session) {
-        supabaseUser.value = data.user
-        await fetchUser()
+        syncUser(data.user)
       }
-
       return true
     } catch (e: any) {
       error.value = e.message || 'Registration failed'
@@ -112,69 +97,62 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /**
-   * Google OAuth via Supabase.
-   * Supabase handles the entire OAuth flow and redirect.
-   */
+  /** Google OAuth via Supabase. */
   async function loginWithGoogle(): Promise<void> {
     const { error: sbError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
+      options: { redirectTo: `${window.location.origin}/` },
     })
-
     if (sbError) {
       error.value = sbError.message
     }
   }
 
-  /**
-   * Logout via Supabase.
-   */
+  /** Logout via Supabase. */
   async function logout(): Promise<void> {
     await supabase.auth.signOut()
-    user.value = null
-    supabaseUser.value = null
+    clearUser()
   }
 
   /**
-   * Initialize auth state from existing Supabase session.
-   * Handles PKCE (?code=) exchange and session restore.
-   * Listener registered FIRST so onAuthStateChange catches SIGNED_IN
-   * from exchangeCodeForSession(). Dedup guard prevents double fetchUser().
+   * Initialize auth state. Handles PKCE exchange and session restore.
+   * CRITICAL: Never throws — router guard depends on init() resolving.
    */
   async function init(): Promise<void> {
     // Register listener FIRST — exchangeCodeForSession fires SIGNED_IN internally
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        supabaseUser.value = session.user
-        await fetchUser()
+        syncUser(session.user)
       } else if (event === 'SIGNED_OUT') {
-        user.value = null
-        supabaseUser.value = null
+        clearUser()
       }
     })
 
-    // Check for PKCE code in URL — exchange it for a session
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    if (code) {
-      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-      if (!exchangeError && data.session?.user) {
-        supabaseUser.value = data.session.user
-        await fetchUser()
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      if (code) {
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError) {
+          error.value = 'OAuth login failed. Please try again.'
+        } else if (data.session?.user) {
+          syncUser(data.session.user)
+        }
+        // Always clean URL — prevents crash loop on refresh with stale code
+        window.history.replaceState({}, document.title, window.location.pathname)
+        return
       }
-      // Clean URL to prevent re-exchange on refresh
-      window.history.replaceState({}, document.title, window.location.pathname)
-      return
-    }
 
-    // Restore existing session on page refresh
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user && !supabaseUser.value) {
-      supabaseUser.value = session.user
-      await fetchUser()
+      // Restore existing session on page refresh
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        syncUser(session.user)
+      }
+    } catch (err) {
+      console.error('Auth init failed:', err)
+      if (window.location.search.includes('code=')) {
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
     }
   }
 
@@ -187,7 +165,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     login,
     register,
-    fetchUser,
     logout,
     loginWithGoogle,
     init,

@@ -4,6 +4,7 @@
  */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth-store'
+import { supabase } from '@/lib/supabase'
 
 export interface WebSocketMessage {
   type: string
@@ -21,13 +22,14 @@ export function useWebSocket(url: string = 'ws://localhost:8000/ws/documents') {
   let reconnectAttempts = 0
   const maxReconnectAttempts = 5
 
-  function connect() {
-    if (!authStore.accessToken) {
+  async function connect() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
       error.value = 'No authentication token'
       return
     }
 
-    const wsUrl = `${url}?token=${authStore.accessToken}`
+    const wsUrl = `${url}?token=${session.access_token}`
 
     try {
       ws.value = new WebSocket(wsUrl)
