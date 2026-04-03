@@ -1,7 +1,7 @@
 /**
  * Supabase client initialization.
- * PKCE flow with detectSessionInUrl: Supabase auto-exchanges ?code= on redirect.
- * No manual exchangeCodeForSession() needed.
+ * PKCE flow with manual code exchange — init() controls timing to avoid
+ * SIGNED_IN events firing before onAuthStateChange listener is registered.
  */
 import { createClient } from '@supabase/supabase-js'
 
@@ -17,7 +17,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: 'pkce',
-    detectSessionInUrl: true, // Let Supabase auto-handle PKCE exchange from ?code=
+    detectSessionInUrl: false, // init() handles PKCE exchange to control timing
     persistSession: true,
     autoRefreshToken: true,
   },

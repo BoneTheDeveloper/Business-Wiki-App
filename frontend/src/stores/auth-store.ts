@@ -140,14 +140,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * Initialize auth state from existing Supabase session.
-   * With detectSessionInUrl: true, Supabase auto-handles PKCE (?code=) exchange
-   * and fires SIGNED_IN via onAuthStateChange. No manual PKCE handling needed.
+   * Handles PKCE (?code=) exchange and session restore.
+   * Listener registered FIRST so onAuthStateChange catches SIGNED_IN
+   * from exchangeCodeForSession(). Dedup guard prevents double fetchUser().
    */
   async function init(): Promise<void> {
-    // Single listener handles ALL auth state changes:
-    // - SIGNED_IN (after PKCE auto-exchange, email login, OAuth redirect)
-    // - TOKEN_REFRESHED (automatic token rotation)
-    // - SIGNED_OUT (manual logout)
+    // Register listener FIRST — exchangeCodeForSession fires SIGNED_IN internally
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         supabaseUser.value = session.user
@@ -158,7 +156,21 @@ export const useAuthStore = defineStore('auth', () => {
       }
     })
 
-    // Restore existing session on page refresh (no SIGNED_IN event fires for this)
+    // Check for PKCE code in URL — exchange it for a session
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) {
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      if (!exchangeError && data.session?.user) {
+        supabaseUser.value = data.session.user
+        await fetchUser()
+      }
+      // Clean URL to prevent re-exchange on refresh
+      window.history.replaceState({}, document.title, window.location.pathname)
+      return
+    }
+
+    // Restore existing session on page refresh
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user && !supabaseUser.value) {
       supabaseUser.value = session.user
