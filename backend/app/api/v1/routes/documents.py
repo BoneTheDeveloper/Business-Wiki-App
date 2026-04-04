@@ -31,8 +31,13 @@ async def _get_document_with_access(
     require_edit: bool = False
 ) -> Document:
     """Fetch document and verify access permission. Raises HTTPException if not found or denied."""
+    try:
+        parsed_id = uuid.UUID(doc_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Document not found")
+
     result = await db.execute(
-        select(Document).where(Document.id == doc_id)
+        select(Document).where(Document.id == parsed_id)
     )
     doc = result.scalar_one_or_none()
 

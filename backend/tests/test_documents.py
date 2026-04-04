@@ -1,6 +1,7 @@
 """Tests for document endpoints."""
 import pytest
 import io
+import uuid
 from httpx import AsyncClient
 from unittest.mock import patch, AsyncMock
 
