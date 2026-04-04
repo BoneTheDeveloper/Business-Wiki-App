@@ -76,7 +76,8 @@ class RAGService:
                 )
             )
             return self._normalize(result.embeddings[0].values)
-
+        except Exception as e:
+            raise RuntimeError(f"Embedding failed: {e}") from e
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for multiple texts, all L2-normalized."""
