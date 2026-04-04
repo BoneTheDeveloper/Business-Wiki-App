@@ -40,8 +40,11 @@ docs/
 │   ├── deployment-guide.md            ← Dev/staging/prod deployment procedures
 │   └── supabase-local-to-production.md
 │
-└── design/
-    └── design-guidelines.md           ← UI/UX guidelines
+├── design/
+│   └── design-guidelines.md           ← UI/UX guidelines
+│
+└── testing/
+    └── README.md                      ← Test strategy, commands, CI pipeline
 ```
 
 ## Quick Navigation
@@ -60,6 +63,7 @@ docs/
 | Coding conventions | `conventions/code-standards.md` |
 | Deploy the app | `ops/deployment-guide.md` |
 | UI/UX guidelines | `design/design-guidelines.md` |
+| Test strategy & commands | `testing/README.md` |
 | Supabase pipeline | `ops/supabase-local-to-production.md` |
 
 ---
@@ -109,8 +113,10 @@ cd frontend && pnpm lint                # Frontend lint
 cd backend && uv run ruff check .       # Backend lint
 
 # Testing
-cd backend && uv run pytest             # Backend tests
-cd frontend && pnpm test                # Frontend tests
+cd backend && uv run pytest tests/ -v                    # Backend tests (SQLite mode)
+TEST_USE_DOCKER=true uv run pytest tests/ -v             # Backend tests (real PG + pgvector)
+uv run pytest tests/ -v --cov=app --cov-report=term-missing  # Backend with coverage
+cd frontend && pnpm test                # Frontend tests (Vitest — Phase 6+)
 
 # Supabase local
 supabase start                          # Start local Supabase
@@ -139,6 +145,17 @@ supabase migration new <name>           # Create new migration
 - **Async processing:** Celery tasks for document parsing, embedding generation.
 - **Vector search:** pgvector with IVFFlat index, cosine similarity, top-10 results.
 - **Chunking:** 500 chars, 50 overlap via LangChain RecursiveCharacterTextSplitter.
+
+### Testing Rules
+
+- **Auth mocking:** Use `app.dependency_overrides[get_current_user]` — never real Supabase calls in tests
+- **DB modes:** SQLite in-memory (default, no Docker) or Testcontainers PG (`TEST_USE_DOCKER=true`)
+- **pgvector tests:** Mark `@pytest.mark.pgvector`, auto-skipped without Docker
+- **Test isolation:** Per-test `drop_all` + `create_all` for clean DB state
+- **Frontend tests:** Vitest + happy-dom + `vi.mock` for API client (Phase 6+)
+- **E2E:** Playwright with `@smoke` tagged tests for PR, full suite nightly (Phase 8+)
+- **Coverage gate:** `--cov-fail-under=50` once Phase 5 completes
+- **See:** `docs/testing/README.md` for full test pyramid details
 
 ### Anti-Patterns (DO NOT)
 
