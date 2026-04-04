@@ -67,13 +67,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --dev
 
-      # NOTE: Runs only @pytest.mark.pgvector tests via testcontainers.
-      # Currently 0 tests — job is a placeholder until vector/embedding tests are added.
-      # Exit code 5 = no tests collected; treat as pass until tests are added.
+      # Runs @pytest.mark.pgvector tests via testcontainers (PostgreSQL + pgvector).
       - name: Run pgvector tests
         env:
           TEST_USE_DOCKER: "true"
-        run: uv run pytest tests/ -v --tb=short -m pgvector || [ $? -eq 5 ]
+        run: |
+          uv run pytest tests/ -v --tb=short -m pgvector
+          exit_code=$?
+          # Exit 5 = no tests collected (should not happen, but tolerate)
+          if [ $exit_code -eq 5 ]; then
+            echo "::warning::No pgvector tests were collected"
+            exit 0
+          fi
+          exit $exit_code
 
   # ── Frontend Lint & Build ──────────────────────────────────
   frontend-build:
