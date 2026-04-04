@@ -1,0 +1,31 @@
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+.next/
+*.log
+.cache/
+
+# Backend dependency lock & cache
+backend/.venv/
+backend/uv.lock
+
+# Frontend dependency & lock
+frontend/node_modules/
+frontend/pnpm-lock.yaml
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
