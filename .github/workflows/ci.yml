@@ -69,10 +69,11 @@ jobs:
 
       # NOTE: Runs only @pytest.mark.pgvector tests via testcontainers.
       # Currently 0 tests — job is a placeholder until vector/embedding tests are added.
+      # Exit code 5 = no tests collected; treat as pass until tests are added.
       - name: Run pgvector tests
         env:
           TEST_USE_DOCKER: "true"
-        run: uv run pytest tests/ -v --tb=short -m pgvector
+        run: uv run pytest tests/ -v --tb=short -m pgvector || [ $? -eq 5 ]
 
   # ── Frontend Lint & Build ──────────────────────────────────
   frontend-build:
