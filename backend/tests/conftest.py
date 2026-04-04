@@ -45,18 +45,22 @@ def pytest_collection_modifyitems(config, items):
 
 # ── Session-scoped Engine ─────────────────────────────────────────
 
+_pg_container = None
+
+
 @pytest.fixture(scope="session")
 def _engine_url() -> str:
     """Database URL for current mode."""
+    global _pg_container
     if USE_DOCKER:
         from testcontainers.postgres import PostgresContainer
-        pg = PostgresContainer("pgvector/pgvector:pg16")
-        pg.start()
-        url = pg.get_connection_url().replace("psycopg2", "asyncpg")
-        # Store container for cleanup
-        os.environ["_TC_PG_CONTAINER"] = pg.get_container_host_ip()
-        return url
-    return "sqlite+aiosqlite:///:memory:"
+        _pg_container = PostgresContainer("pgvector/pgvector:pg16")
+        _pg_container.start()
+        url = _pg_container.get_connection_url().replace("psycopg2", "asyncpg")
+        yield url
+        _pg_container.stop()
+        return
+    yield "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="session")
