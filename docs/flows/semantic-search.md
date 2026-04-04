@@ -7,7 +7,7 @@ sequenceDiagram
     actor User
     participant FE as Frontend (Vue.js)
     participant API as FastAPI Backend
-    participant OpenAI as OpenAI API
+    participant Gemini as Google Gemini API
     participant DB as PostgreSQL + pgvector
 
     User->>FE: Type natural language query
@@ -16,8 +16,8 @@ sequenceDiagram
     API->>API: Validate JWT token
     API->>API: Extract user_id from token
 
-    API->>OpenAI: Generate query embedding<br/>(text-embedding-3-small)
-    OpenAI-->>API: 1536-dim vector
+    API->>Gemini: Generate query embedding<br/>(gemini-embedding-001)
+    Gemini-->>API: 1536-dim vector
 
     API->>DB: SELECT chunks with cosine similarity<br/>WHERE user_id matches<br/>ORDER BY embedding <=> query_vector<br/>LIMIT 10
     DB-->>API: Top 10 chunks with scores

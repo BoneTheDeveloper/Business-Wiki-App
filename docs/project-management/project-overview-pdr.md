@@ -84,12 +84,13 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - **FR-010:** Conversational interface
   - Chat with uploaded documents
   - Context-aware responses based on retrieved chunks
-  - Source citations for each response
+  - Source citations for each response (RAG)
 
 - **FR-011:** Chat context management
   - Keep conversation history (last 5 messages)
   - Retrieve relevant chunks for each message
   - Build RAG prompt with retrieved context
+  - Use Google Gemini gemini-2.0-flash for chat responses
 
 ### Non-Functional Requirements
 
@@ -110,7 +111,7 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - **NFR-010:** Backup and recovery procedures
 
 #### Security Requirements
-- **NFR-011:** JWT tokens signed with HS256
+- **NFR-011:** JWT tokens signed with RS256 (Supabase Auth)
 - **NFR-012:** Passwords hashed with bcrypt
 - **NFR-013:** Role-based access enforced at API level
 - **NFR-014:** CORS configured for allowed origins only
@@ -127,13 +128,13 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - Use Python 3.11+ for backend
 - Use Vue 3 Composition API for frontend
 - Maintain consistency with existing codebase
-- Follow established coding standards (see `docs/code-standards.md`)
+- Follow established coding standards (see `docs/development/code-standards.md`)
 
 ### Integration Constraints
 - PostgreSQL with pgvector extension for embeddings
 - Redis for caching and Celery broker
 - MinIO for object storage (S3-compatible)
-- OpenAI API for embeddings and LLM
+- Google Gemini API for embeddings and LLM
 
 ### Deployment Constraints
 - Docker Compose for development and staging
@@ -146,7 +147,7 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - User auth (register, login, JWT)
 - Document upload (PDF, DOCX, XLSX)
 - Document parsing & chunking
-- Vector embedding (OpenAI text-embedding-3-small)
+- Vector embedding (Google Gemini gemini-embedding-001)
 - Semantic search with relevance scores
 - Basic chat with RAG
 - Admin dashboard (user management, document stats)
@@ -261,8 +262,8 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - **Contingency:** Reduce supported formats to MVP (PDF only)
 
 **Risk 2: Embedding Costs**
-- **Description:** OpenAI API costs for embeddings
-- **Mitigation:** Use text-embedding-3-small (cheaper), implement rate limiting
+- **Description:** Google Gemini API costs for embeddings
+- **Mitigation:** Use gemini-embedding-001 (cheaper), implement rate limiting
 - **Contingency:** Switch to local embeddings in Phase 2
 
 **Risk 3: Vector Database Performance**
@@ -273,7 +274,7 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 ### Operational Risks
 
 **Risk 4: API Key Security**
-- **Description:** OpenAI API key exposure
+- **Description:** Google Gemini API key exposure
 - **Mitigation:** Store in environment variables, rotate regularly
 - **Contingency:** Use proxy server for API calls
 
@@ -290,7 +291,7 @@ RAG Business Document Wiki is a vector-based document management and Q&A platfor
 - Existing Docker infrastructure - Phase 1
 
 ### External Dependencies
-- OpenAI API (embeddings + chat) - Monthly subscription
+- Google Gemini API (embeddings + chat) - Monthly subscription
 - PostgreSQL with pgvector extension - Self-hosted or managed
 - Redis - Self-hosted or managed
 - MinIO - Self-hosted (Docker)

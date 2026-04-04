@@ -6,39 +6,39 @@
 sequenceDiagram
     actor User
     participant FE as Frontend (Vue.js)
+    participant Supa as Supabase Auth
     participant API as FastAPI Backend
     participant DB as PostgreSQL
 
     rect rgb(230, 245, 255)
-        Note over User,DB: REGISTRATION
+        Note over User,Supa: REGISTRATION
         User->>FE: Fill registration form
         FE->>FE: Validate email & password
-        FE->>API: POST /api/v1/auth/register<br/>{ email, password }
-        API->>API: Check email uniqueness
-        API->>API: Hash password (bcrypt, 12 rounds)
-        API->>DB: INSERT user (role: 'user')
+        FE->>Supa: supabase.auth.signUp({email, password})
+        Supa->>Supa: Create user in Auth system
+        Supa-->>FE: { user, session }
+        FE->>API: POST /api/v1/auth/register<br/>Authorization: Bearer {token}
+        API->>API: Verify Supabase JWT (JWKS RS256)
+        API->>DB: INSERT user profile (role: user)
         DB-->>API: user_id
         API-->>FE: 201 Created
     end
 
     rect rgb(230, 255, 230)
-        Note over User,DB: LOGIN
+        Note over User,Supa: LOGIN
         User->>FE: Enter credentials
-        FE->>API: POST /api/v1/auth/login<br/>{ email, password }
-        API->>DB: SELECT user WHERE email = ?
-        DB-->>API: user record
-        API->>API: Verify bcrypt hash
-        API->>API: Generate JWT (HS256, 30min expiry)
-        API-->>FE: { access_token, user }
-        FE->>FE: Store token in localStorage
+        FE->>Supa: supabase.auth.signInWithPassword({email, password})
+        Supa->>Supa: Verify credentials
+        Supa-->>FE: { access_token, refresh_token, user }
+        FE->>FE: Store session (Pinia auth store)
     end
 
     rect rgb(255, 245, 230)
         Note over User,DB: AUTHENTICATED REQUEST
         User->>FE: Perform action
-        FE->>API: GET /api/v1/documents<br/>Authorization: Bearer {token}
-        API->>API: Decode & verify JWT
-        API->>API: Check token expiry
+        FE->>API: GET /api/v1/documents<br/>Authorization: Bearer {supabase_token}
+        API->>API: Verify JWT via Supabase JWKS (RS256)
+        API->>API: Extract user_id from token
         API->>API: Check user role (RBAC)
         API->>DB: Query with user_id filter
         DB-->>API: Results
@@ -46,11 +46,11 @@ sequenceDiagram
     end
 
     rect rgb(255, 230, 230)
-        Note over User,DB: TOKEN REFRESH
-        FE->>API: POST /api/v1/auth/refresh<br/>Authorization: Bearer {old_token}
-        API->>API: Verify old token
-        API->>API: Generate new JWT
-        API-->>FE: { access_token }
+        Note over User,Supa: TOKEN REFRESH
+        FE->>Supa: supabase.auth.refreshSession()
+        Supa->>Supa: Validate refresh_token
+        Supa-->>FE: { access_token, refresh_token }
+        FE->>FE: Update session in auth store
     end
 ```
 
@@ -101,10 +101,11 @@ graph LR
 
 | Measure | Implementation |
 |---------|---------------|
-| Password hashing | bcrypt, 12 salt rounds |
-| Token signing | HS256 with JWT_SECRET_KEY |
-| Token expiry | 30 minutes |
-| Token refresh | POST /auth/refresh |
+| Authentication | Supabase Auth (managed) |
+| Token signing | RS256 via Supabase JWKS |
+| Token verification | JWKS public key rotation |
+| Token refresh | supabase.auth.refreshSession() |
+| Session storage | Pinia auth store |
 | CORS | Restricted to allowed origins |
 | SQL injection | Parameterized queries via SQLAlchemy |
 | Input validation | Pydantic schemas |

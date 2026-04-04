@@ -7,7 +7,7 @@ sequenceDiagram
     actor User
     participant FE as Frontend (Vue.js)
     participant API as FastAPI Backend
-    participant OpenAI as OpenAI API
+    participant Gemini as Google Gemini API
     participant DB as PostgreSQL + pgvector
 
     User->>FE: Send chat message
@@ -16,16 +16,16 @@ sequenceDiagram
     API->>API: Validate JWT token
     API->>API: Extract user_id
 
-    API->>OpenAI: Generate message embedding<br/>(text-embedding-3-small)
-    OpenAI-->>API: 1536-dim vector
+    API->>Gemini: Generate message embedding<br/>(gemini-embedding-001)
+    Gemini-->>API: 1536-dim vector
 
     API->>DB: Vector similarity search<br/>Top 10 relevant chunks
     DB-->>API: Retrieved context chunks
 
     API->>API: Build RAG prompt<br/>[System] + [Context chunks]<br/>+ [Chat history] + [User message]
 
-    API->>OpenAI: Chat completion<br/>(GPT-3.5-turbo)
-    OpenAI-->>API: AI response
+    API->>Gemini: Chat completion<br/>(gemini-2.0-flash)
+    Gemini-->>API: AI response
 
     API->>API: Format response with citations
     API-->>FE: { response, sources }

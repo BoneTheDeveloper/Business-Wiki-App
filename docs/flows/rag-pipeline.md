@@ -23,7 +23,7 @@ flowchart LR
     end
 
     subgraph EMBED["4. EMBEDDING"]
-        F["OpenAI text-embedding-3-small<br/>1536 dimensions"]
+        F["Google Gemini gemini-embedding-001<br/>1536 dimensions"]
     end
 
     subgraph STORE["5. STORAGE"]
@@ -38,7 +38,7 @@ flowchart LR
 
     subgraph GENERATE["7. GENERATION"]
         K[Build RAG Prompt]
-        L["OpenAI GPT-3.5-turbo<br/>Chat Completion"]
+        L["Google Gemini 2.0 Flash<br/>Chat Completion"]
         M[Response + Citations]
     end
 
@@ -61,9 +61,9 @@ flowchart LR
 | Chunking | Chunk size | 500 characters |
 | Chunking | Chunk overlap | 50 characters |
 | Chunking | Max chunks per doc | 1000 |
-| Embedding | Model | text-embedding-3-small |
+| Embedding | Model | gemini-embedding-001 |
 | Embedding | Dimensions | 1536 |
 | Search | Similarity metric | Cosine similarity |
 | Search | Top-K results | 10 chunks |
-| Generation | LLM model | GPT-3.5-turbo |
+| Generation | LLM model | gemini-2.0-flash |
 | Generation | Max context messages | 5 (conversation history) |

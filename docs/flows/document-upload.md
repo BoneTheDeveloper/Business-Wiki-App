@@ -10,7 +10,7 @@ sequenceDiagram
     participant MinIO as MinIO Storage
     participant DB as PostgreSQL
     participant Celery as Celery Worker
-    participant OpenAI as OpenAI API
+    participant Gemini as Google Gemini API
     participant WS as WebSocket
 
     User->>FE: Select file to upload
@@ -39,8 +39,8 @@ sequenceDiagram
     Celery->>DB: UPDATE document SET status = 'processing'
 
     loop For each chunk
-        Celery->>OpenAI: Generate embedding<br/>(text-embedding-3-small)
-        OpenAI-->>Celery: 1536-dim vector
+        Celery->>Gemini: Generate embedding<br/>(gemini-embedding-001)
+        Gemini-->>Celery: 1536-dim vector
         Celery->>DB: INSERT document_chunk<br/>(content + embedding)
     end
 
@@ -60,6 +60,6 @@ sequenceDiagram
 | 3 | API | Uploads file to MinIO, creates DB record (status: pending) |
 | 4 | API | Dispatches Celery task, returns 202 Accepted |
 | 5 | Celery | Downloads file from MinIO, parses text content |
-| 6 | Celery | Chunks text (500 chars, 50 overlap), generates embeddings via OpenAI |
+| 6 | Celery | Chunks text (500 chars, 50 overlap), generates embeddings via Google Gemini |
 | 7 | Celery | Saves chunks with embeddings to pgvector column |
 | 8 | WebSocket | Notifies frontend of completion status |

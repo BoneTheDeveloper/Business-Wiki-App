@@ -1,6 +1,6 @@
 # High-Level System Architecture
 
-> Source: [system-architecture.md](../system-architecture.md), [tech-stack.md](../tech-stack.md)
+> Source: [system-architecture.md](./system-architecture.md), [tech-stack.md](./context/tech-stack.md)
 
 ```mermaid
 graph TB
@@ -26,7 +26,7 @@ graph TB
     end
 
     subgraph EXTERNAL["EXTERNAL SERVICES"]
-        OPENAI["OpenAI API<br/>Embeddings + Chat"]
+        GEMINI["Google Gemini API<br/>Embeddings + Chat"]
     end
 
     FE --> FASTAPI
@@ -39,11 +39,11 @@ graph TB
     DOC_SVC --> MINIO
     DOC_SVC --> PG
     RAG_SVC --> PG
-    RAG_SVC --> OPENAI
+    RAG_SVC --> GEMINI
     TASK_Q --> REDIS
     TASK_Q --> PG
     TASK_Q --> MINIO
-    TASK_Q --> OPENAI
+    TASK_Q --> GEMINI
 ```
 
 ## Component Responsibilities
@@ -59,4 +59,4 @@ graph TB
 | **PostgreSQL + pgvector** | Metadata storage, vector similarity search |
 | **Redis** | Celery broker, result backend, session cache |
 | **MinIO** | S3-compatible document file storage |
-| **OpenAI API** | text-embedding-3-small (1536 dims), GPT-3.5-turbo chat |
+| **Google Gemini API** | gemini-embedding-001 (1536 dims), gemini-2.0-flash chat |

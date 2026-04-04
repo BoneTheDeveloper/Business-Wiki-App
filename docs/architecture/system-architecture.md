@@ -1,6 +1,6 @@
 # System Architecture - RAG Business Document Wiki
 
-**Last Updated:** 2026-03-27
+**Last Updated:** 2026-04-04
 **Version:** 0.1.0
 
 ## Architecture Overview
@@ -17,10 +17,10 @@
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    API LAYER                                 │
-│  FastAPI + JWT Auth + RBAC + WebSocket                       │
+│  FastAPI + Supabase Auth + RBAC + WebSocket                  │
 │  (backend/app/)                                              │
 │  - API Routes (auth, documents, search, chat, admin)         │
-│  - JWT Token Validation                                      │
+│  - Supabase JWT Verification (JWKS RS256)                    │
 │  - Role-Based Access Control                                │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -90,10 +90,10 @@
 - FastAPI 0.115.0
 - SQLAlchemy 2.0.38
 - Pydantic 2.10.0
-- JWT (python-jose, passlib)
+- Supabase Auth (JWKS RS256 verification)
+- Google Gemini AI 1.0.0
 - Celery 5.4.0
 - LangChain 0.3.0
-- OpenAI 1.68.0
 - pgvector 0.4.0
 
 **Architecture Pattern:** RESTful API with Async Processing
@@ -106,8 +106,8 @@
 - `chat.py` - RAG chat endpoint
 - `admin.py` - Admin endpoints (user management, stats)
 - `websocket.py` - WebSocket for real-time updates
-- `auth/routes.py` - Authentication endpoints
-- `auth/security.py` - JWT and password hashing
+- `auth/routes.py` - Authentication endpoint (GET /auth/me only)
+- `auth/supabase.py` - JWKS token verification
 
 **Data Layer** (`app/models/`)
 - `models.py` - SQLAlchemy ORM models (User, Document, DocumentChunk)
@@ -117,7 +117,7 @@
 **Business Logic** (`app/services/`)
 - `rag_service.py` - RAG pipeline orchestration
 - `celery_tasks.py` - Async task processing
-- `llm_service.py` - OpenAI embeddings and chat
+- `llm_service.py` - Google Gemini embeddings and chat
 - `minio_service.py` - S3-compatible storage operations
 - `parsing.py` - Document parsing (PDF/DOCX/XLSX)
 
@@ -241,11 +241,11 @@ User Upload → Parse → Chunk → Embed → Store → Search/Chat
 - **Output:** List of text chunks with metadata
 
 **Step 3: Embedding Generation**
-- **Model:** OpenAI text-embedding-3-small
+- **Model:** Google Gemini gemini-embedding-001
 - **Dimensions:** 1536
 - **Process:**
   - Split text into batches (max 1000 chars)
-  - Call OpenAI embeddings API
+  - Call Google Gemini embeddings API
   - Store vectors in pgvector column
 
 **Step 4: Storage**
@@ -260,7 +260,7 @@ User Upload → Parse → Chunk → Embed → Store → Search/Chat
 
 **Step 6: Response Generation**
 - Build RAG prompt with retrieved context
-- Call OpenAI chat API
+- Call Google Gemini chat API
 - Return response with source citations
 
 ## API Endpoints
@@ -354,7 +354,7 @@ WS     /ws/documents              Document status updates
    - Generate query embedding
    - Search for relevant chunks (top 10)
    - Build RAG prompt with context
-   - Call OpenAI chat API
+   - Call Google Gemini chat API
    - Return response with citations
 3. Frontend:
    - Display AI response
@@ -367,13 +367,12 @@ WS     /ws/documents              Document status updates
 ### Authentication Flow
 
 ```
-1. User logs in → POST /auth/login
-2. Backend validates credentials
-3. Generates JWT token (30 minutes expiry)
-4. Returns token + user info
-5. Frontend stores token in localStorage
-6. Subsequent requests include token in Authorization header
-7. Backend validates token with JWT_SECRET_KEY
+1. User clicks "Sign in with Google" → Supabase OAuth (PKCE)
+2. Supabase Auth handles Google consent + token exchange
+3. Frontend receives session (access_token, refresh_token)
+4. Subsequent requests include token in Authorization header
+5. Backend verifies JWT via Supabase JWKS (RS256)
+6. Auto-refresh handled by Supabase client SDK
 ```
 
 ### Authorization Flow
@@ -391,10 +390,10 @@ WS     /ws/documents              Document status updates
 ### Security Measures
 
 **Authentication:**
-- JWT tokens signed with HS256
-- Passwords hashed with bcrypt (12 salt rounds)
-- Token refresh mechanism
-- Token expiration (30 minutes)
+- Supabase Auth with JWKS RS256 verification
+- Google OAuth (PKCE flow) via Supabase client SDK
+- Token refresh handled automatically by Supabase SDK
+- Token expiration managed by Supabase
 
 **Authorization:**
 - Role-based access control (user/editor/admin)
@@ -503,8 +502,9 @@ WS     /ws/documents              Document status updates
 - `DATABASE_URL` - Production database connection
 - `REDIS_URL` - Production Redis connection
 - `MINIO_ENDPOINT` - Production MinIO endpoint
-- `JWT_SECRET_KEY` - Strong secret key
-- `OPENAI_API_KEY` - OpenAI API key
+- `GOOGLE_API_KEY` - Google Gemini API key
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
 - `CELERY_BROKER_URL` - Production Redis URL
 
 ## Monitoring & Observability

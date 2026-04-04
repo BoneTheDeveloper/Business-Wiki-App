@@ -1,6 +1,6 @@
 # Tech Stack - RAG Business Document Wiki
 
-**Last Updated:** 2026-03-26
+**Last Updated:** 2026-04-04
 **Status:** Confirmed for MVP
 
 ## Architecture Overview
@@ -14,7 +14,7 @@
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    API LAYER                                 │
-│  FastAPI + JWT Auth + RBAC + Rate Limiting                  │
+│  FastAPI + Supabase Auth (JWKS RS256) + RBAC               │
 │  WebSocket for real-time updates                            │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -53,15 +53,15 @@
 |-----------|------------|---------|
 | Framework | FastAPI | ^0.115.0 |
 | Language | Python | ^3.11 |
-| Package Manager | Poetry | - |
+| Package Manager | uv | - |
 | ASGI Server | Uvicorn | ^0.34.0 |
 | ORM | SQLAlchemy | ^2.0.38 |
 | Validation | Pydantic | ^2.10.0 |
-| Auth | python-jose + passlib | - |
+| Auth | Supabase Auth (JWKS RS256) | - |
 | Task Queue | Celery | ^5.4.0 |
 | Vector DB | pgvector | ^0.4.0 |
 | Object Storage | MinIO | ^7.2.15 |
-| LLM API | OpenAI | ^1.68.0 |
+| LLM API | Google Gemini (google-genai) | ^1.0.0 |
 | RAG | LangChain | ^0.3.0 |
 
 ### Data Layer
@@ -83,9 +83,9 @@
 | Task | Library |
 |------|---------|
 | Chunking | LangChain RecursiveCharacterTextSplitter |
-| Embeddings | OpenAI text-embedding-3-small |
+| Embeddings | Google Gemini (gemini-embedding-001, 1536 dims) |
 | Orchestration | LangChain |
-| Response Gen | OpenAI chat completion |
+| Response Gen | Google Gemini (gemini-2.0-flash) |
 
 ### Infrastructure
 | Component | Technology |
@@ -125,7 +125,7 @@ CREATE TABLE document_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID REFERENCES documents(id),
     content TEXT NOT NULL,
-    embedding vector(1536),  -- OpenAI dims
+    embedding vector(1536),  -- Gemini embedding dims
     chunk_index INTEGER NOT NULL,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW()
@@ -180,10 +180,10 @@ JWT_SECRET_KEY=your-secret-key
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
 
-# OpenAI
-OPENAI_API_KEY=sk-xxx
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_CHAT_MODEL=gpt-3.5-turbo
+# Google Gemini
+GOOGLE_API_KEY=your-google-api-key
+GEMINI_CHAT_MODEL=gemini-2.0-flash
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
 
 # Celery
 CELERY_BROKER_URL=redis://redis:6379/0
@@ -204,7 +204,7 @@ CELERY_RESULT_BACKEND=redis://redis:6379/1
 - User auth (register, login, JWT)
 - Document upload (PDF, DOCX, XLSX)
 - Document parsing & chunking
-- Vector embedding (OpenAI)
+- Vector embedding (Google Gemini)
 - Semantic search
 - Basic chat with RAG
 - Admin dashboard (user management)
@@ -224,4 +224,4 @@ CELERY_RESULT_BACKEND=redis://redis:6379/1
 - **FastAPI** over Django: Async-first, better for real-time features
 - **pgvector** over Qdrant: Simpler stack, PostgreSQL already needed for metadata
 - **MinIO** over S3: Self-hosted, S3-compatible API
-- **OpenAI embeddings** for MVP: Fastest to implement, migrate to local later
+- **Google Gemini** for embeddings + chat: Free tier available, fast inference, migrate to local later if needed

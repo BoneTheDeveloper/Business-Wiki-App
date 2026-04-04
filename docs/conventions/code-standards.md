@@ -52,7 +52,7 @@ backend/app/
 │   └── database.py             # DB initialization
 ├── services/
 │   ├── celery_tasks.py         # Async tasks
-│   ├── llm_service.py          # OpenAI integration
+│   ├── llm_service.py          # Google Gemini integration
 │   └── rag_service.py          # RAG pipeline
 └── utils/
     └── websocket.py            # WebSocket utilities
@@ -220,7 +220,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 30
-    openai_api_key: str
+    google_api_key: str
     minio_endpoint: str
 
     class Config:
@@ -607,7 +607,7 @@ DEFAULT_CHUNK_OVERLAP = 50  # Overlap between chunks
 
 # TODO: Implement caching for embeddings
 # FIXME: Handle large files (>10MB) better
-# NOTE: OpenAI API has rate limits, need to implement backoff
+# NOTE: Google Gemini API has rate limits, need to implement backoff
 
 # Hardcoded value - replace with environment variable
 MAX_DOCUMENT_SIZE = 50 * 1024 * 1024  # 50MB

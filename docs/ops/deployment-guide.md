@@ -9,7 +9,7 @@
 
 **Development**
 - Docker & Docker Compose (latest version)
-- Poetry (Python 3.11+)
+- uv (Python package manager)
 - Node.js 18+ and npm
 - Git
 
@@ -22,7 +22,7 @@
 - 2GB RAM minimum (4GB recommended)
 
 ### Required Accounts
-- OpenAI API account with credits
+- Google AI account with credits
 - (Optional) SendGrid account for email verification
 
 ---
@@ -65,8 +65,8 @@ JWT_SECRET_KEY=generate-random-32-char-string
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=30
 
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-api-key
+# Google Gemini
+GOOGLE_API_KEY=your-google-api-key
 
 # Celery
 CELERY_BROKER_URL=redis://localhost:6379/0
@@ -165,10 +165,10 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install dependencies
-poetry install
+uv sync
 
 # Run development server
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### Frontend Setup
@@ -268,7 +268,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     volumes:
@@ -299,14 +299,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: poetry run celery -A app.celery_app worker --loglevel=info
+    command: uv run celery -A app.celery_app worker --loglevel=info
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
     volumes:
@@ -578,8 +578,8 @@ echo $VITE_API_URL
 # Check celery logs
 docker-compose logs celery_worker
 
-# Verify OpenAI API key
-echo $OPENAI_API_KEY
+# Verify Google Gemini API key
+echo $GOOGLE_API_KEY
 
 # Check file permissions
 docker-compose exec backend ls -la /app/uploads
@@ -688,6 +688,7 @@ docker-compose up -d frontend
 **Issue:** Documents not processing
 - Check Celery worker status: `docker-compose ps celery_worker`
 - Check worker logs: `docker-compose logs celery_worker`
+- Verify Google Gemini API key: `echo $GOOGLE_API_KEY`
 
 **Issue:** Search not working
 - Verify embeddings are generated: Check document status

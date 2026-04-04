@@ -41,17 +41,6 @@ erDiagram
 
     users ||--o{ documents : "owns"
     documents ||--o{ document_chunks : "has (cascade delete)"
-
-    users {
-        note1: "idx_users_email ON (email)"
-    }
-    documents {
-        note1: "idx_documents_user_id ON (user_id)"
-    }
-    document_chunks {
-        note1: "idx_chunks_document_id ON (document_id)"
-        note2: "idx_chunks_embedding ON (embedding) USING ivfflat"
-    }
 ```
 
 ## Schema Details
@@ -69,7 +58,7 @@ erDiagram
 - **file_size**: In bytes
 
 ### document_chunks
-- **embedding**: pgvector column, 1536 dimensions (OpenAI text-embedding-3-small)
+- **embedding**: pgvector column, 1536 dimensions (Google Gemini gemini-embedding-001)
 - **chunk_index**: Sequential index for ordering within document
 - **chunk_metadata**: JSONB (page number, file position, etc.)
 - **IVFFlat index** for fast cosine similarity search (100 lists)
