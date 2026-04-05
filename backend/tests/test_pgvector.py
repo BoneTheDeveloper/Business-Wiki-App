@@ -39,8 +39,8 @@ async def test_vector_insert_and_query(db_session: AsyncSession):
         )
     """))
 
-    # Insert a chunk with a 1536-dim embedding (all zeros for test)
-    embedding = "[" + ", ".join(["0.0"] * 1536) + "]"
+    # Insert a chunk with a 1536-dim unit vector (non-zero to avoid NaN in cosine distance)
+    embedding = "[1.0" + ", " + ", ".join(["0.0"] * 1535) + "]"
     await db_session.execute(text("""
         INSERT INTO document_chunks (id, document_id, content, chunk_index, embedding)
         VALUES (
