@@ -43,7 +43,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip)
 
 
-# ── Session-scoped Engine ─────────────────────────────────────────
+# ── Database URL (session-scoped) + Engine (function-scoped) ──────
 
 _pg_container = None
 
@@ -63,9 +63,14 @@ def _engine_url() -> str:
     yield "sqlite+aiosqlite:///:memory:"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def db_engine(_engine_url):
-    """Create async engine — SQLite by default, Testcontainers PG if Docker."""
+    """Create async engine per test — avoids event loop mismatch.
+
+    Session-scoped async engines bind to one loop, but pytest-asyncio
+    creates a new loop per test by default, causing 'Future attached to
+    a different loop' errors with asyncpg.
+    """
     engine = create_async_engine(_engine_url, echo=False)
 
     async with engine.begin() as conn:
