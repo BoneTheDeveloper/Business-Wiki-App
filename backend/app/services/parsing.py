@@ -1,7 +1,7 @@
 """Document parsing service for PDF, DOCX, XLSX formats."""
 from typing import Dict, Any, Optional
 import os
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from docx import Document as DocxDocument
 from openpyxl import load_workbook
 

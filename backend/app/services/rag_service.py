@@ -132,7 +132,7 @@ class RAGService:
                 dc.document_id,
                 d.filename,
                 d.format,
-                1 - (dc.embedding <=> :embedding::vector) as similarity
+                1 - (dc.embedding <=> CAST(:embedding AS vector)) as similarity
             FROM document_chunks dc
             JOIN documents d ON d.id = dc.document_id
             WHERE d.status = 'completed'
@@ -155,7 +155,7 @@ class RAGService:
                 params["user_id"] = filters["user_id"]
 
         # Order by similarity (lower distance = higher similarity)
-        sql += f" ORDER BY dc.embedding <=> :embedding::vector LIMIT :limit"
+        sql += f" ORDER BY dc.embedding <=> CAST(:embedding AS vector) LIMIT :limit"
         params["limit"] = min(top_k, 50)
 
         result = await db.execute(text(sql), params)

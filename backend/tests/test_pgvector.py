@@ -46,16 +46,16 @@ async def test_vector_insert_and_query(db_session: AsyncSession):
         VALUES (
             '33333333-3333-3333-3333-333333333333',
             '22222222-2222-2222-2222-222222222222',
-            'test content for vector search', 0, :emb::vector
+            'test content for vector search', 0, CAST(:emb AS vector)
         )
     """), {"emb": embedding})
 
     # Query using cosine distance operator
     result = await db_session.execute(text("""
-        SELECT content, 1 - (embedding <=> :emb::vector) AS similarity
+        SELECT content, 1 - (embedding <=> CAST(:emb AS vector)) AS similarity
         FROM document_chunks
         WHERE document_id = '22222222-2222-2222-2222-222222222222'
-        ORDER BY embedding <=> :emb::vector
+        ORDER BY embedding <=> CAST(:emb AS vector)
         LIMIT 5
     """), {"emb": embedding})
     rows = result.fetchall()
@@ -93,7 +93,7 @@ async def test_vector_cosine_distance(db_session: AsyncSession):
         VALUES (
             '66666666-6666-6666-6666-666666666666',
             '55555555-5555-5555-5555-555555555555',
-            'chunk A', 0, :emb::vector
+            'chunk A', 0, CAST(:emb AS vector)
         )
     """), {"emb": vec_a})
 
@@ -102,16 +102,16 @@ async def test_vector_cosine_distance(db_session: AsyncSession):
         VALUES (
             '77777777-7777-7777-7777-777777777777',
             '55555555-5555-5555-5555-555555555555',
-            'chunk B', 1, :emb::vector
+            'chunk B', 1, CAST(:emb AS vector)
         )
     """), {"emb": vec_b})
 
     # Query with vec_a — chunk A should rank first (identical → distance = 0)
     result = await db_session.execute(text("""
-        SELECT content, 1 - (embedding <=> :query::vector) AS similarity
+        SELECT content, 1 - (embedding <=> CAST(:query AS vector)) AS similarity
         FROM document_chunks
         WHERE document_id = '55555555-5555-5555-5555-555555555555'
-        ORDER BY embedding <=> :query::vector
+        ORDER BY embedding <=> CAST(:query AS vector)
     """), {"query": vec_a})
     rows = result.fetchall()
     assert len(rows) == 2
