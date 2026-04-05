@@ -4,9 +4,15 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 from app.config import settings
 
+# Disable SSL for local Supabase / Docker connections
+connect_args = {}
+if "host.docker.internal" in settings.DATABASE_URL or "127.0.0.1" in settings.DATABASE_URL or "localhost" in settings.DATABASE_URL:
+    connect_args["ssl"] = None
+
 engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
-    echo=False
+    echo=False,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
