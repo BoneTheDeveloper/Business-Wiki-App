@@ -44,7 +44,8 @@ docs/
 │   └── design-guidelines.md           ← UI/UX guidelines
 │
 └── testing/
-    └── README.md                      ← Test strategy, commands, CI pipeline
+    ├── auto.md                       ← Automated: test pyramid, commands, CI pipeline
+    └── manual.md                      ← Manual: curl commands, smoke checklist, endpoint testing
 ```
 
 ## Quick Navigation
@@ -63,7 +64,8 @@ docs/
 | Coding conventions | `conventions/code-standards.md` |
 | Deploy the app | `ops/deployment-guide.md` |
 | UI/UX guidelines | `design/design-guidelines.md` |
-| Test strategy & commands | `testing/README.md` |
+| Test strategy & commands | `testing/auto.md` |
+| Manual testing guide | `testing/manual.md` |
 | Supabase pipeline | `ops/supabase-local-to-production.md` |
 
 ---
@@ -155,7 +157,7 @@ supabase migration new <name>           # Create new migration
 - **Frontend tests:** Vitest + happy-dom + `vi.mock` for API client (Phase 6+)
 - **E2E:** Playwright with `@smoke` tagged tests for PR, full suite nightly (Phase 8+)
 - **Coverage gate:** `--cov-fail-under=50` once Phase 5 completes
-- **See:** `docs/testing/README.md` for full test pyramid details
+- **See:** `docs/testing/auto/README.md` for automated test pyramid, `docs/testing/manual/README.md` for manual testing guide
 
 ### Anti-Patterns (DO NOT)
 
