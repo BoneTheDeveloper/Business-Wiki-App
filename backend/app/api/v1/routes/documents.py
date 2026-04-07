@@ -1,10 +1,11 @@
 """Document management API routes."""
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
 from uuid import UUID
 import uuid
+import logging
 
 from app.models.database import get_db
 from app.models.models import Document, DocumentStatus, DocumentVisibility, User
@@ -17,6 +18,8 @@ from app.services.minio_service import minio_service
 from app.services.parsing import DocumentParser
 from app.services.organization_service import organization_service
 from app.services.permission_service import permission_service, Permission
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -51,8 +54,96 @@ async def _get_document_with_access(
     return doc
 
 
+async def _process_document_background(document_id: str, file_path: str, format_type: str):
+    """Background task to process uploaded document."""
+    import asyncio
+    from app.services.celery_tasks import run_async
+    from app.services.celery_tasks import process_document_task
+
+    try:
+        # Run the same processing logic from celery_tasks but without Celery
+        async def _process():
+            from app.models.database import AsyncSessionLocal
+            from app.models.models import Document, DocumentStatus, DocumentChunk
+            from app.services.minio_service import minio_service
+            from app.services.parsing import DocumentParser
+            from app.services.rag_service import rag_service
+            from app.config import settings
+            import tempfile
+            import os
+
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(Document).where(Document.id == document_id)
+                )
+                doc = result.scalar_one_or_none()
+                if not doc:
+                    return
+
+                doc.status = DocumentStatus.PROCESSING
+                await db.commit()
+
+                try:
+                    content = await minio_service.get_file(file_path)
+
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=f".{format_type}"
+                    ) as tmp:
+                        tmp.write(content)
+                        tmp_path = tmp.name
+
+                    try:
+                        parsed = DocumentParser.parse(tmp_path, format_type)
+
+                        doc.doc_metadata = {
+                            **doc.doc_metadata,
+                            **parsed['metadata'],
+                            'text_length': len(parsed['text']),
+                            'word_count': len(parsed['text'].split())
+                        }
+                        doc.extracted_text = parsed['text'][:100000]
+
+                        chunks = rag_service.chunk_text(parsed['text'], doc.doc_metadata)
+                        chunks_created = 0
+
+                        if chunks and settings.GOOGLE_API_KEY:
+                            contents = [c['content'] for c in chunks]
+                            embeddings = await rag_service.embed_batch(contents)
+
+                            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                                db_chunk = DocumentChunk(
+                                    document_id=doc.id,
+                                    content=chunk['content'],
+                                    embedding=embedding,
+                                    chunk_index=i,
+                                    metadata=chunk.get('metadata', {})
+                                )
+                                db.add(db_chunk)
+                                chunks_created += 1
+
+                            doc.doc_metadata['chunk_count'] = chunks_created
+
+                        doc.status = DocumentStatus.COMPLETED
+                        await db.commit()
+
+                    finally:
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
+
+                except Exception as e:
+                    logger.error("Document processing failed for %s: %s", document_id, str(e))
+                    doc.status = DocumentStatus.FAILED
+                    doc.error_message = str(e)[:500]
+                    await db.commit()
+
+        await _process()
+    except Exception as e:
+        logger.error("Background processing error for %s: %s", document_id, str(e))
+
+
 @router.post("/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     organization_id: Optional[UUID] = Query(None, description="Target organization ID"),
     visibility: DocumentVisibility = Query(DocumentVisibility.PRIVATE, description="Document visibility"),
@@ -81,11 +172,9 @@ async def upload_document(
     # Handle organization context
     org_id = None
     if organization_id:
-        # Check permission to upload to org
         if not await permission_service.can_upload_to_organization(db, organization_id, current_user.id):
             raise HTTPException(status_code=403, detail="No permission to upload to this organization")
 
-        # Check quota
         quota_check = await organization_service.check_quota(
             db, organization_id,
             additional_documents=1,
@@ -134,9 +223,11 @@ async def upload_document(
     await db.commit()
     await db.refresh(doc)
 
-    # Queue async processing task
-    from app.services.celery_tasks import process_document_task
-    process_document_task.delay(str(doc.id), object_name, format_type)
+    # Schedule background processing (replaces Celery .delay())
+    background_tasks.add_task(
+        _process_document_background,
+        str(doc.id), object_name, format_type
+    )
 
     return doc
 

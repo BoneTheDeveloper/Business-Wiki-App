@@ -59,6 +59,46 @@ Chainlit Container (:8001)     Backend Container (:8000)
 - Google Gemini API key configured
 - Docker Compose running
 
+## Completion Notes
+All phases completed successfully:
+
+**Phase 1 - Backend playground endpoints:**
+- Created `backend/app/api/v1/routes/playground.py` with 3 endpoints (chat, search, documents)
+- Fixed duplicate embedding call - routes now use raw SQL with pgvector instead of calling rag_service.search
+- Added query validation (min 3 chars) to search endpoint
+- Created `backend/app/schemas/playground.py` with all request/response models
+- Added `PLAYGROUND_ENABLED: bool = False` to `backend/app/config.py`
+- Registered playground router in `backend/app/main.py`
+
+**Phase 2 - Chainlit app + UI:**
+- Created `chainlit/app.py` with step-by-step RAG pipeline visualization
+- Fixed syntax errors in app.py and elements.py (bad indentation)
+- Created `chainlit/api/client.py` with httpx async client for backend calls
+- Created `chainlit/api/models.py` with Pydantic response models
+- Created `chainlit/ui/steps.py` with RAG step builders
+- Created `chainlit/ui/elements.py` with chunk display and latency metrics
+- Created `chainlit/config.yaml` (removed incorrect [project] header)
+- Created `chainlit/pyproject.toml` with dependencies
+
+**Phase 3 - Docker config + integration:**
+- Fixed Dockerfile (pip install . instead of pip install -r pyproject.toml)
+- Added chainlit service to `docker/docker-compose.yml` with `profiles: [playground]`
+- Added `CHAINLIT_PORT=8001` to root `.env.example`
+- Added `PLAYGROUND_ENABLED=false` to backend `.env.example`
+- Added `PLAYGROUND_ENABLED=${PLAYGROUND_ENABLED:-false}` to docker-compose.yml
+- Created `chainlit/Dockerfile` and `.dockerignore`
+
+**Fixes Applied:**
+1. Removed duplicate embedding calls - playground routes do raw SQL with pgvector directly
+2. Fixed syntax errors in chainlit files (app.py, elements.py)
+3. Fixed Dockerfile (pip install . instead of pip install -r pyproject.toml)
+4. Fixed chainlit config.toml (removed incorrect [project] header)
+5. Added `PlaygroundDocumentInfo` to imports in app.py
+6. Added `PLAYGROUND_ENABLED` to backend .env.example
+7. Added `CHAINLIT_PORT` to root .env.example
+8. Added chainlit service to docker-compose.yml with profiles: [playground]
+9. Added query validation (min 3 chars) to search endpoint
+
 ## Security
 - Playground endpoints gated by `PLAYGROUND_ENABLED=true` env var
 - No JWT auth required for playground routes

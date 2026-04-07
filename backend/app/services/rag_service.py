@@ -17,7 +17,7 @@ class RAGService:
     def __init__(self):
         self._client: Optional[genai.Client] = None
         self.embed_model = "gemini-embedding-001"
-        self.embed_dimensions = 1536
+        self.embed_dimensions: int = 1536
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=2000,  # Characters (~512 tokens)
             chunk_overlap=200,  # ~50 tokens overlap

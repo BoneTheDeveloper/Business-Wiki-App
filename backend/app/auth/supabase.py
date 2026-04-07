@@ -1,4 +1,5 @@
-"""Supabase JWT verification using JWKS (RS256)."""
+"""Supabase JWT verification using JWKS."""
+import logging
 import time
 from typing import Optional
 
@@ -6,6 +7,8 @@ from jose import jwt, JWTError
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class JWKSCache:
@@ -50,24 +53,24 @@ async def verify_supabase_token(token: str) -> dict:
 
     try:
         jwks = await jwks_cache.get_jwks()
-        issuer = f"{settings.SUPABASE_URL}/auth/v1"
 
         payload = jwt.decode(
             token,
             jwks,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             audience="authenticated",
-            issuer=issuer,
         )
         return payload
 
     except JWTError as e:
+        logger.warning("JWT verification failed: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except httpx.HTTPError as e:
+        logger.error("Cannot reach Supabase JWKS: %s", str(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Unable to verify token: {str(e)}",
