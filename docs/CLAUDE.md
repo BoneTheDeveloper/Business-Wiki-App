@@ -132,6 +132,7 @@ supabase migration new <name>           # Create new migration
 |---------|------|
 | Frontend | 5173 |
 | Backend API | 8000 |
+| Chainlit Playground | 8001 |
 | PostgreSQL | 5432 |
 | Redis | 6379 |
 | MinIO API | 9000 |

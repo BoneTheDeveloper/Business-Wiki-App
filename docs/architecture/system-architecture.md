@@ -302,6 +302,44 @@ GET    /api/v1/admin/stats        Get stats
 WS     /ws/documents              Document status updates
 ```
 
+### Playground (RAG Testing — local dev only, requires `PLAYGROUND_ENABLED=true`)
+```
+POST   /api/v1/playground/chat      Chat with detailed RAG step info
+POST   /api/v1/playground/search    Search with chunk details + scores
+GET    /api/v1/playground/documents List available docs (no auth)
+```
+
+**Backend Playground Endpoints:**
+
+**POST /api/v1/playground/chat**
+- Request: `{ "message": "User query", "chat_history": [] }`
+- Response: `{ "response": "AI answer", "steps": [...], "latency_ms": 1234, "retrieved_chunks": [...] }`
+- Purpose: Chat with RAG pipeline, shows retrieval steps, latency metrics, similarity scores
+- Auth: No (gated by PLAYGROUND_ENABLED env var)
+- Connects to: Chainlit RAG Playground via httpx async client
+
+**POST /api/v1/playground/search**
+- Request: `{ "query": "Search query", "top_k": 10 }`
+- Response: `{ "results": [...], "latency_ms": 234, "chunks_with_scores": [...] }`
+- Purpose: Search with detailed chunk retrieval and similarity scores
+- Auth: No (gated by PLAYGROUND_ENABLED env var)
+- Connects to: Chainlit RAG Playground via httpx async client
+
+**GET /api/v1/playground/documents**
+- Request: `GET /playground/documents`
+- Response: `{ "documents": [{"id": "...", "filename": "...", "chunk_count": 42}, ...] }`
+- Purpose: List available documents for playground testing
+- Auth: No (gated by PLAYGROUND_ENABLED env var)
+- Connects to: Chainlit RAG Playground via httpx async client
+
+**Chainlit RAG Playground:**
+- Tech Stack: Chainlit 1.0+ (web UI for RAG pipeline debugging)
+- Port: 8001
+- Docker Profile: "playground" (enabled by default when PLAYGROUND_ENABLED=true)
+- Auth: No JWT auth (open access when enabled)
+- Features: Visual RAG pipeline steps, latency metrics, retrieved chunks with similarity scores
+- Data Flow: Chainlit → httpx async client → Backend playground endpoints → RAG service → Database → Response with detailed metrics
+
 ## Data Flow Diagrams
 
 ### Document Upload Flow
@@ -462,6 +500,7 @@ WS     /ws/documents              Document status updates
 │  backend: FastAPI (binds to :8000)                           │
 │  frontend: Vite dev server (binds to :5173)                  │
 │  celery_worker: Celery worker                                │
+│  chainlit: RAG Playground (binds to :8001)                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -506,6 +545,8 @@ WS     /ws/documents              Document status updates
 - `SUPABASE_URL` - Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
 - `CELERY_BROKER_URL` - Production Redis URL
+- `PLAYGROUND_ENABLED` - Enable playground endpoints (default: false, no JWT auth)
+- `CHAINLIT_PORT` - Chainlit playground port (default: 8001)
 
 ## Monitoring & Observability
 

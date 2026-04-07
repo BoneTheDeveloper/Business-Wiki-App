@@ -295,7 +295,38 @@ graph LR
 
 ---
 
-## Phase 8: Post-MVP Enhancements (Q2 2026)
+## Phase 8: Chainlit RAG Playground (PLANNED)
+
+**Duration:** 2-3 days
+**Status:** ⏳ Planned
+
+### Objectives
+- Create Chainlit-based RAG playground for dev testing + stakeholder demos
+- Add observability: step-by-step pipeline, retrieved chunks, latency metrics
+- Separate Docker container connecting to backend API
+
+### Tasks
+- [ ] Add backend playground endpoints (`/api/v1/playground/*`)
+- [ ] Create Chainlit app with step visualization
+- [ ] Implement chunk display with similarity scores
+- [ ] Add latency metrics per RAG step
+- [ ] Docker config (Dockerfile + docker-compose addition)
+- [ ] Testing & integration
+
+### Deliverables
+- `chainlit/` — standalone Chainlit project
+- `backend/app/api/v1/routes/playground.py` — debug endpoints
+- Updated `docker/docker-compose.yml` with chainlit service
+
+### Success Criteria
+- Chat query shows all RAG steps with timing
+- Retrieved chunks displayed with scores and source
+- Playground accessible at `localhost:8001`
+- No auth required for local dev
+
+---
+
+## Phase 9: Post-MVP Enhancements (Q2 2026)
 
 **Duration:** Month 3-4
 **Status:** ⏳ Future

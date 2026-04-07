@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     # Google Gemini
     GOOGLE_API_KEY: str = ""
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    # Playground (local dev only — never enable in production)
+    PLAYGROUND_ENABLED: bool = False
+
+    model_config = {"env_file": ".env.local", "extra": "ignore"}
 
 
 settings = Settings()

@@ -1,0 +1,3 @@
+# Chainlit configuration - local dev playground (no auth)
+headless = true
+port = 8000

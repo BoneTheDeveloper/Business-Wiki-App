@@ -14,6 +14,7 @@ from app.api.v1.routes.websocket import router as ws_router
 from app.api.v1.routes.organizations import router as organizations_router
 from app.api.v1.routes.invitations import router as invitations_router
 from app.api.v1.routes.groups import router as groups_router
+from app.api.v1.routes.playground import router as playground_router
 
 
 @asynccontextmanager
@@ -36,7 +37,7 @@ app = FastAPI(
 # CORS middleware (Supabase Auth handles sessions -- no server-side session needed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:8001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +53,7 @@ app.include_router(ws_router)  # WebSocket at /ws/documents
 app.include_router(organizations_router, prefix="/api/v1")
 app.include_router(invitations_router, prefix="/api/v1")
 app.include_router(groups_router, prefix="/api/v1")
+app.include_router(playground_router, prefix="/api/v1")
 
 
 @app.get("/health")

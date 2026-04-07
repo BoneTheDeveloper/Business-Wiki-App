@@ -1,0 +1,16 @@
+[project]
+name = "chainlit-rag-playground"
+version = "0.1.0"
+description = "Chainlit RAG Playground for dev testing and stakeholder demos"
+readme = "https://github.com"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "chainlit>=2.0.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+]

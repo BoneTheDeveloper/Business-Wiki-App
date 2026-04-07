@@ -14,6 +14,7 @@ graph TB
             BE_DEV["backend<br/>FastAPI (uvicorn)<br/>:8000"]
             FE_DEV["frontend<br/>Vite dev server<br/>:5173"]
             CW_DEV["celery_worker<br/>Celery worker"]
+            CL_DEV["chainlit<br/>RAG Playground<br/>:8001<br/>docker profile: playground"]
         end
     end
 
@@ -30,6 +31,7 @@ graph TB
     CW_DEV --> REDIS_DEV
     CW_DEV --> MINIO_DEV
     FE_DEV --> BE_DEV
+    CL_DEV --> BE_DEV
 
     PG_DEV -.-> VOL_PG
     REDIS_DEV -.-> VOL_REDIS

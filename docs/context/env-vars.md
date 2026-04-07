@@ -16,7 +16,8 @@ Root `.env.example` is the single source of truth. Backend and frontend have the
 | `MINIO_API_PORT` | MinIO API port | `9000` |
 | `MINIO_CONSOLE_PORT` | MinIO console port | `9001` |
 | `BACKEND_PORT` | FastAPI port | `8000` |
-| `FRONTEND_PORT` | Vite dev server port | `3000` |
+| `FRONTEND_PORT` | Vite dev server port | `5173` |
+| `CHAINLIT_PORT` | Chainlit playground port | `8001` |
 | `SUPABASE_DB_PORT` | Supabase PostgreSQL port | `54322` |
 | `SUPABASE_URL` | Supabase API URL | `http://127.0.0.1:54321` |
 | `SUPABASE_ANON_KEY` | Supabase anon/public key | — |
@@ -26,6 +27,7 @@ Root `.env.example` is the single source of truth. Backend and frontend have the
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | — |
 | `MINIO_ACCESS_KEY` | MinIO access key | `minioadmin` |
 | `MINIO_SECRET_KEY` | MinIO secret key | `minioadmin` |
+| `PLAYGROUND_ENABLED` | Enable Chainlit RAG Playground (local dev only) | `false` |
 
 ### Backend (.env)
 
@@ -51,6 +53,7 @@ Root `.env.example` is the single source of truth. Backend and frontend have the
 |---------|------|
 | Vite dev server | 5173 |
 | Backend API | 8000 |
+| Chainlit RAG Playground | 8001 |
 | Supabase API | 54321 |
 | Supabase DB | 54322 |
 | Redis | 6379 |
