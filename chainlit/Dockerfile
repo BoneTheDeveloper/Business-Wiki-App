@@ -2,12 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+# Copy dependency files and install
+ENV UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-dev --no-install-project
 
+# Copy application code
 COPY . .
 
-EXPOSE 8000
-CMD ["chainlit", "run", "app.py", "--headless", "--port", "8000"]
+CMD ["uv", "run", "chainlit", "run", "app.py", "--headless", "--host", "0.0.0.0", "--port", "8000"]

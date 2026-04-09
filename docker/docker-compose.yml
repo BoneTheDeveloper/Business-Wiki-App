@@ -62,6 +62,24 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  chainlit:
+    build:
+      context: ../chainlit
+      dockerfile: Dockerfile
+    ports:
+      - "${CHAINLIT_PORT:-8001}:8000"
+    env_file:
+      - ../.env.local
+    environment:
+      BACKEND_URL: http://backend:8000
+    volumes:
+      - ../chainlit:/app
+    depends_on:
+      backend:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   celery_worker:
     build:
       context: ../backend
@@ -83,21 +101,6 @@ services:
       - redis
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  chainlit:
-    build:
-      context: ../chainlit
-      dockerfile: Dockerfile
-    ports:
-      - "${CHAINLIT_PORT:-8001}:8000"
-    environment:
-      BACKEND_URL: http://backend:8000
-    depends_on:
-      - backend
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    profiles:
-      - playground
 
 volumes:
   redis_data:
