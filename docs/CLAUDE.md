@@ -92,23 +92,46 @@ docs/
 | RAG | LangChain | ^0.3 |
 | Pkg Mgmt | uv (backend) / pnpm (frontend) | - |
 
-### Dev Commands
+### Dev Commands (Makefile)
+
+The project uses a `Makefile` at root for all common commands. Run `make help` to see all targets.
 
 ```bash
-# Docker (recommended for local dev)
-docker-compose up -d                    # Start all services
-docker-compose logs -f backend          # View backend logs
-docker-compose down                     # Stop all services
+# Quick reference — run `make help` for full list
+make install          # Install all deps (backend + frontend + chainlit)
+make up               # Start core services via Docker (no playground)
+make up-playground    # Start all services + Chainlit playground
+make down             # Stop and remove containers
+make logs             # Tail docker compose logs
+make test             # Run backend tests
+make clean            # Remove containers and volumes
+```
 
-# Backend local
-cd backend
-uv sync                                 # Install deps
+**Local dev (no Docker):**
+```bash
+make supabase         # Start local Supabase (prerequisite)
+make dev-backend      # Run backend on :8000
+make dev-frontend     # Run frontend on :5173
+make dev-chainlit     # Run playground on :8000 (needs backend running)
+```
+
+**Raw commands (if `make` unavailable):**
+```bash
+# Docker
+docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml --profile playground up -d  # with playground
+docker compose -f docker/docker-compose.yml down
+
+# Backend
+cd backend && uv sync
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend local
-cd frontend
-pnpm install                            # Install deps
-pnpm dev                                # Dev server (localhost:5173)
+# Frontend
+cd frontend && pnpm install && pnpm dev
+
+# Chainlit
+cd chainlit && uv sync
+uv run chainlit run app.py --headless --port 8000
 
 # Linting
 cd frontend && pnpm lint                # Frontend lint
@@ -118,9 +141,8 @@ cd backend && uv run ruff check .       # Backend lint
 cd backend && uv run pytest tests/ -v                    # Backend tests (SQLite mode)
 TEST_USE_DOCKER=true uv run pytest tests/ -v             # Backend tests (real PG + pgvector)
 uv run pytest tests/ -v --cov=app --cov-report=term-missing  # Backend with coverage
-cd frontend && pnpm test                # Frontend tests (Vitest — Phase 6+)
 
-# Supabase local
+# Supabase
 supabase start                          # Start local Supabase
 supabase db reset                       # Reset local DB + run migrations
 supabase migration new <name>           # Create new migration
